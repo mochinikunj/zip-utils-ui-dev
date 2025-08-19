@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
+  <body>
+    <p id="title">Hello World!</p>
+
+    <script>
+      const endPoint =
+        "https://tz3q3kqtqi.execute-api.ap-south-1.amazonaws.com/graphql";
+
+      async function callGraphQL() {
+        try {
+          const response = await fetch(endPoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: `
+              query HealthCheck {
+                healthCheck
+              }
+            `,
+              variables: {},
+            }),
+          });
+
+          const data = await response.json();
+          console.log("Response:", data);
+        } catch (error) {
+          console.error("Error:", error);
+        }
+      }
+
+      callGraphQL();
+    </script>
+  </body>
+</html>
