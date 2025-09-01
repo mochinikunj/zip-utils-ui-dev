@@ -1,0 +1,140 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="utf-8">
+    <title>Zip-Utils</title>
+    <base href="C:/Program Files/Git/zip-utils-ui/">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="styles.css"><style ng-app-id="ng">
+
+.custom-container[_ngcontent-ng-c2924611498] {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.header-container[_ngcontent-ng-c2924611498] {
+  border-bottom: 1px solid #ddd;
+}
+.main-content[_ngcontent-ng-c2924611498] {
+  flex: 1 1 auto;
+}
+.footer-container[_ngcontent-ng-c2924611498] {
+  border-top: 1px solid #ddd;
+}
+/*# sourceMappingURL=app.component.css.map */</style><style ng-app-id="ng">
+
+header[_ngcontent-ng-c645543352] {
+  background: var(--banner-gradient);
+  text-align: center;
+  color: white;
+  box-shadow: 0 4px 12px var(--shadow);
+  position: relative;
+}
+header[_ngcontent-ng-c645543352]   h1[_ngcontent-ng-c645543352] {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: bold;
+}
+header[_ngcontent-ng-c645543352]   p[_ngcontent-ng-c645543352] {
+  margin: 0.5rem auto 1rem auto;
+  font-size: 1.1rem;
+}
+.toggle-button[_ngcontent-ng-c645543352] {
+  position: absolute;
+  top: 1rem;
+}
+.theme-toggle[_ngcontent-ng-c645543352] {
+  right: 1rem;
+}
+.home-redirect[_ngcontent-ng-c645543352] {
+  left: 1rem;
+}
+.theme-toggle[_ngcontent-ng-c645543352]   button[_ngcontent-ng-c645543352], 
+.home-redirect[_ngcontent-ng-c645543352]   button[_ngcontent-ng-c645543352] {
+  background: var(--card-bg);
+  border: none;
+  border-radius: 1.5rem;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--primary);
+  box-shadow: 0 2px 5px var(--shadow);
+  transition: background 0.3s, color 0.3s;
+}
+@media screen and (max-width: 768px) {
+  header[_ngcontent-ng-c645543352]   h1[_ngcontent-ng-c645543352] {
+    font-size: 2rem;
+  }
+  .toggle-button[_ngcontent-ng-c645543352] {
+    top: 0.5rem;
+  }
+  .theme-toggle[_ngcontent-ng-c645543352] {
+    right: 0.5rem;
+  }
+  .home-redirect[_ngcontent-ng-c645543352] {
+    left: 0.5rem;
+  }
+}
+/*# sourceMappingURL=header.component.css.map */</style><style ng-app-id="ng">
+
+.tools-container[_ngcontent-ng-c1381916891] {
+  gap: 2rem;
+}
+.tool-card[_ngcontent-ng-c1381916891] {
+  background: var(--card-bg);
+  border-radius: 1.5rem;
+  box-shadow: 0 6px 16px var(--shadow);
+  width: 100%;
+  max-width: 400px;
+  padding: 2rem;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.tool-card[_ngcontent-ng-c1381916891]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px var(--shadow);
+}
+.tool-card[_ngcontent-ng-c1381916891]   h2[_ngcontent-ng-c1381916891] {
+  margin-top: 0.5rem;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+.tool-card[_ngcontent-ng-c1381916891]   p[_ngcontent-ng-c1381916891] {
+  font-size: 0.95rem;
+  color: inherit;
+  margin: 1.3rem auto;
+}
+.tool-card[_ngcontent-ng-c1381916891]   button[_ngcontent-ng-c1381916891] {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.tool-card[_ngcontent-ng-c1381916891]   button[_ngcontent-ng-c1381916891]:hover {
+  background: var(--secondary);
+}
+.tool-icon[_ngcontent-ng-c1381916891] {
+  font-size: 3rem;
+  color: var(--secondary);
+  margin-bottom: 1rem;
+}
+@media screen and (max-width: 768px) {
+  header[_ngcontent-ng-c1381916891]   h1[_ngcontent-ng-c1381916891] {
+    font-size: 2rem;
+  }
+  .tool-card[_ngcontent-ng-c1381916891] {
+    max-width: 90%;
+  }
+}
+/*# sourceMappingURL=home.component.css.map */</style><meta name="description" content="One place. Many tools. Quick and simple."></head>
+  <body><!--nghm-->
+    <app-root _nghost-ng-c2924611498="" ng-version="18.2.13" ngh="1" ng-server-context="ssg"><div _ngcontent-ng-c2924611498="" class="custom-container"><div _ngcontent-ng-c2924611498="" class="header-container"><app-header _ngcontent-ng-c2924611498="" _nghost-ng-c645543352="" ngh="0"><header _ngcontent-ng-c645543352="" class="py-5 px-3"><div _ngcontent-ng-c645543352="" class="toggle-button home-redirect"><button _ngcontent-ng-c645543352="" id="homeRedirect" routerlink="/" tabindex="0" ng-reflect-router-link="/">🏠 Home</button></div><div _ngcontent-ng-c645543352="" class="toggle-button theme-toggle"><button _ngcontent-ng-c645543352="" id="themeToggle">Toggle Theme</button></div><h1 _ngcontent-ng-c645543352="" class="app-name">Zip-Utils</h1><p _ngcontent-ng-c645543352="" class="app-description my-2"> One place. Many tools. Quick and simple. </p></header></app-header></div><div _ngcontent-ng-c2924611498="" class="main-content"><router-outlet _ngcontent-ng-c2924611498=""></router-outlet><app-home _nghost-ng-c1381916891="" ngh="0"><div _ngcontent-ng-c1381916891="" class="tools-container d-flex justify-content-center flex-wrap py-5 px-3"><div _ngcontent-ng-c1381916891="" class="tool-card"><div _ngcontent-ng-c1381916891="" class="tool-icon">📝</div><h2 _ngcontent-ng-c1381916891="">Zip-Text</h2><p _ngcontent-ng-c1381916891="">Paste and share text instantly using a unique link.</p><button _ngcontent-ng-c1381916891="" routerlink="/text" tabindex="0" ng-reflect-router-link="/text">Go to Tool</button></div><div _ngcontent-ng-c1381916891="" class="tool-card"><div _ngcontent-ng-c1381916891="" class="tool-icon">🔗</div><h2 _ngcontent-ng-c1381916891="">Zip-URL</h2><p _ngcontent-ng-c1381916891="">Shorten long URLs into simple, shareable links.</p><button _ngcontent-ng-c1381916891="" routerlink="/url" tabindex="0" ng-reflect-router-link="/url">Go to Tool</button></div><div _ngcontent-ng-c1381916891="" class="tool-card"><div _ngcontent-ng-c1381916891="" class="tool-icon">📷</div><h2 _ngcontent-ng-c1381916891="">Zip-QR</h2><p _ngcontent-ng-c1381916891="">Generate QR codes for links, text, or any data in one click.</p><button _ngcontent-ng-c1381916891="" routerlink="/qr" tabindex="0" ng-reflect-router-link="/qr">Go to Tool</button></div></div></app-home><!--container--></div><div _ngcontent-ng-c2924611498="" class="footer-container"><app-footer _ngcontent-ng-c2924611498="" _nghost-ng-c2022390366="" ngh="0"><p _ngcontent-ng-c2022390366="">footer works!</p></app-footer></div></div></app-root>
+  <script src="polyfills.js" type="module"></script><script src="scripts.js" defer=""></script><script src="main.js" type="module"></script>
+
+<script id="ng-state" type="application/json">{"__nghData__":[{},{"c":{"4":[{"i":"c1381916891","r":1}]}}]}</script></body></html>

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/app.component.css"],
+  "sourcesContent": [".custom-container {\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n}\n\n.header-container {\n  /* flex: 0 1 auto; */\n  border-bottom: 1px solid #ddd;\n}\n\n.main-content {\n  flex: 1 1 auto;\n}\n\n.footer-container {\n  /* flex: 0 1 auto; */\n  border-top: 1px solid #ddd;\n}\n"],
+  "mappings": ";AAAA,CAAC;AACC,UAAQ;AACR,WAAS;AACT,kBAAgB;AAClB;AAEA,CAAC;AAEC,iBAAe,IAAI,MAAM;AAC3B;AAEA,CAAC;AACC,QAAM,EAAE,EAAE;AACZ;AAEA,CAAC;AAEC,cAAY,IAAI,MAAM;AACxB;",
+  "names": []
+}
