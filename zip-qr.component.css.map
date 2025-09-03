@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/zip-qr/zip-qr.component.css"],
+  "sourcesContent": [".main-content-qr {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n}\n"],
+  "mappings": ";AAAA,CAAC;AACC,aAAW;AACX,UAAQ,KAAK;AACb,WAAS;AACT,cAAY,IAAI;AAChB,iBAAe;AACf,cAAY,EAAE,IAAI,KAAK,IAAI;AAC3B,cAAY;AACd;",
+  "names": []
+}

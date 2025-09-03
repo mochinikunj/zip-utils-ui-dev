@@ -37275,13 +37275,17 @@ var ZipTextComponent = class _ZipTextComponent {
   static \u0275fac = function ZipTextComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipTextComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextComponent, selectors: [["app-zip-text"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 2, vars: 0, template: function ZipTextComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextComponent, selectors: [["app-zip-text"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 7, vars: 0, consts: [[1, "main-content-text"], ["rows", "8", "placeholder", "Paste your text here..."]], template: function ZipTextComponent_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275elementStart(0, "p");
-      \u0275\u0275text(1, "zip-text works!");
+      \u0275\u0275elementStart(0, "div", 0)(1, "h3");
+      \u0275\u0275text(2, "Enter your text");
       \u0275\u0275elementEnd();
+      \u0275\u0275element(3, "textarea", 1)(4, "br");
+      \u0275\u0275elementStart(5, "button");
+      \u0275\u0275text(6, "Generate Link");
+      \u0275\u0275elementEnd()();
     }
-  } });
+  }, styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\nbutton[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\nbutton[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\n/*# sourceMappingURL=zip-text.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src\\app\\zip-text\\zip-text.component.ts", lineNumber: 12 });
@@ -37299,13 +37303,15 @@ var ZipUrlComponent = class _ZipUrlComponent {
   static \u0275fac = function ZipUrlComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipUrlComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipUrlComponent, selectors: [["app-zip-url"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 2, vars: 0, template: function ZipUrlComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipUrlComponent, selectors: [["app-zip-url"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 5, vars: 0, consts: [[1, "main-content-url"], [1, "tool-box"], ["type", "url", "placeholder", "Paste your long URL here..."]], template: function ZipUrlComponent_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275elementStart(0, "p");
-      \u0275\u0275text(1, "zip-url works!");
-      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
+      \u0275\u0275element(2, "input", 2);
+      \u0275\u0275elementStart(3, "button");
+      \u0275\u0275text(4, "Shorten URL");
+      \u0275\u0275elementEnd()()();
     }
-  } });
+  }, styles: ["\n\n.main-content-url[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 3rem 1rem;\n}\n.tool-box[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  max-width: 800px;\n  width: 100%;\n  padding: 2rem;\n  text-align: center;\n}\n.tool-box[_ngcontent-%COMP%]   input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  margin-bottom: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  background: var(--bg);\n  color: var(--text);\n}\n.tool-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n.tool-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\n/*# sourceMappingURL=zip-url.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipUrlComponent, { className: "ZipUrlComponent", filePath: "src\\app\\zip-url\\zip-url.component.ts", lineNumber: 12 });
@@ -37323,13 +37329,13 @@ var ZipQrComponent = class _ZipQrComponent {
   static \u0275fac = function ZipQrComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipQrComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipQrComponent, selectors: [["app-zip-qr"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 2, vars: 0, template: function ZipQrComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipQrComponent, selectors: [["app-zip-qr"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 3, vars: 0, consts: [[1, "main-content-qr"]], template: function ZipQrComponent_Template(rf, ctx) {
     if (rf & 1) {
-      \u0275\u0275elementStart(0, "p");
-      \u0275\u0275text(1, "zip-qr works!");
-      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(0, "div", 0)(1, "h2");
+      \u0275\u0275text(2, "\u{1F680} We\u2019re coming soon with this feature \u2014 stay tuned!");
+      \u0275\u0275elementEnd()();
     }
-  } });
+  }, styles: ["\n\n.main-content-qr[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n}\n/*# sourceMappingURL=zip-qr.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipQrComponent, { className: "ZipQrComponent", filePath: "src\\app\\zip-qr\\zip-qr.component.ts", lineNumber: 12 });
@@ -51250,7 +51256,7 @@ var AppComponent = class _AppComponent {
       \u0275\u0275element(6, "app-footer");
       \u0275\u0275elementEnd()();
     }
-  }, dependencies: [RouterOutlet, HeaderComponent, FooterComponent], styles: ["\n\n.custom-container[_ngcontent-%COMP%] {\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n}\n.header-container[_ngcontent-%COMP%] {\n  border-bottom: 1px solid #ddd;\n}\n.main-content[_ngcontent-%COMP%] {\n  flex: 1 1 auto;\n}\n.footer-container[_ngcontent-%COMP%] {\n  border-top: 1px solid #ddd;\n}\n/*# sourceMappingURL=app.component.css.map */"] });
+  }, dependencies: [RouterOutlet, HeaderComponent, FooterComponent], styles: ["\n\n.custom-container[_ngcontent-%COMP%] {\n  height: 100%;\n  display: flex;\n  flex-direction: column;\n}\n.header-container[_ngcontent-%COMP%] {\n  border-bottom: 1px solid #ddd;\n}\n.main-content[_ngcontent-%COMP%] {\n  flex: 1 1 auto;\n}\n.footer-container[_ngcontent-%COMP%] {\n  border-top: 1px solid #737373;\n}\n/*# sourceMappingURL=app.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(AppComponent, { className: "AppComponent", filePath: "src\\app\\app.component.ts", lineNumber: 13 });

@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/app/zip-text/zip-text.component.css"],
+  "sourcesContent": [".main-content-text {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n}\n\n.main-content-text h3 {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\n\ntextarea,\ninput[type='text'] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\n\nbutton {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n\nbutton:hover {\n  background: var(--secondary);\n}\n"],
+  "mappings": ";AAAA,CAAC;AACC,aAAW;AACX,UAAQ,KAAK;AACb,WAAS;AACT,cAAY,IAAI;AAChB,iBAAe;AACf,cAAY,EAAE,IAAI,KAAK,IAAI;AAC3B,cAAY;AACd;AAEA,CAVC,kBAUkB;AACjB,SAAO,IAAI;AACX,iBAAe;AACjB;AAEA;AACA,KAAK,CAAC;AACJ,SAAO;AACP,WAAS;AACT,UAAQ,IAAI,MAAM;AAClB,iBAAe;AACf,aAAW;AACX,iBAAe;AACf,cAAY;AACZ,SAAO;AACT;AAEA;AACE,cAAY,IAAI;AAChB,SAAO;AACP,UAAQ;AACR,WAAS,OAAO;AAChB,aAAW;AACX,iBAAe;AACf,UAAQ;AACR,cAAY,WAAW;AACzB;AAEA,MAAM;AACJ,cAAY,IAAI;AAClB;",
+  "names": []
+}
