@@ -39350,7 +39350,7 @@ var COMPONENT_TITLE;
 })(COMPONENT_TITLE || (COMPONENT_TITLE = {}));
 var COMPONENT_DESCRIPTION;
 (function(COMPONENT_DESCRIPTION2) {
-  COMPONENT_DESCRIPTION2["ZIP_TEXT"] = "\u{1F4AC} ZipUtils helps you transfer text online securely without email or messaging apps. Upload text, generate a private link, and share it instantly with automatic expiry. \u{1F512}";
+  COMPONENT_DESCRIPTION2["ZIP_TEXT"] = "\u{1F4AC} ZipUtils Text Transfer is an online text sharing tool that lets you paste text and instantly generate a secure, shareable link. Upload text, generate a private link, and share it instantly with automatic expiry. \u{1F512}";
   COMPONENT_DESCRIPTION2["ZIP_URL"] = "\u{1F517} Shorten long URLs instantly with ZipUtils. Create clean, shareable short links that are fast, reliable, and easy to use. \u26A1";
   COMPONENT_DESCRIPTION2["ZIP_QR"] = "\u{1F4F1} Generate/Scan QR codes for links, text, or data \u2014 in one click.";
 })(COMPONENT_DESCRIPTION || (COMPONENT_DESCRIPTION = {}));
@@ -59271,20 +59271,32 @@ var BotGuardComponent = class _BotGuardComponent {
 // src/app/content/text-faq.content.ts
 var ZIP_TEXT_FAQ = [
   {
-    question: "How does text uploading work?",
+    question: "How does online text transfer work?",
     answer: "Paste your text, choose an expiry time, and generate a secure link. The text is automatically deleted after expiry."
   },
   {
-    question: "Is uploaded text secure?",
+    question: "Is online text transfer secure?",
     answer: "Yes. ZipUtils encrypts uploaded text and removes it permanently after the selected expiry time."
   },
   {
-    question: "How long is uploaded text stored?",
+    question: "How long does shared text stay available online?",
     answer: "Uploaded text is stored only until the expiry time you choose, after which it is permanently deleted."
   },
   {
     question: "Who can access my uploaded text?",
     answer: "Only people with the generated private link can access your uploaded text. Once expired, the link no longer works."
+  },
+  {
+    question: "Can I share text online without email or messaging apps?",
+    answer: "Yes. ZipUtils lets you paste text and generate a private link that you can share directly, without using email, WhatsApp, or any messaging app."
+  },
+  {
+    question: "Can I send long text online using this tool?",
+    answer: "Yes. ZipUtils is designed for sharing long text, notes, or instructions online by converting them into a single secure, shareable link."
+  },
+  {
+    question: "Can I create a temporary text link that expires automatically?",
+    answer: "Yes. You can choose an expiry time when generating the link. Once the expiry time is reached, the text is permanently deleted."
   },
   {
     question: "Can I share links or create QR codes instead of sharing text?",
@@ -59368,7 +59380,7 @@ var ZIP_QR_FAQ = [
   },
   {
     question: "When should I use a QR code instead of text or URL sharing?",
-    answer: 'QR codes are best when you want fast access on mobile devices, offline sharing, or clean presentation. For longer content, consider using <a href="/text/">Text Sharing</a> or a <a href="/url/">URL Shortener</a> and then generate a QR code for that link.'
+    answer: 'QR codes are best when you want fast access on mobile devices, offline sharing, or clean presentation. For longer content, consider using <a href="/text/">Online Text Transfer</a> or a <a href="/url/">URL Shortener</a> and then generate a QR code for that link.'
   }
 ];
 
@@ -59447,6 +59459,52 @@ var FaqComponent = class _FaqComponent {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(FaqComponent, { className: "FaqComponent", filePath: "src/app/faq/faq.component.ts", lineNumber: 16 });
 })();
 
+// src/app/services/seo/seo-schema.service.ts
+var SeoSchemaService = class _SeoSchemaService {
+  FAQ_SCHEMA_ID = "faq-schema";
+  /**
+   * Inject FAQPage schema into <head>
+   */
+  setFaqSchema(faqs) {
+    if (!faqs || !faqs.length)
+      return;
+    this.removeFaqSchema();
+    const schema = {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: this.stripHtml(faq.answer)
+        }
+      }))
+    };
+    const script = document.createElement("script");
+    script.id = this.FAQ_SCHEMA_ID;
+    script.type = "application/ld+json";
+    script.text = JSON.stringify(schema);
+    document.head.appendChild(script);
+  }
+  /**
+   * Remove FAQ schema (on route change / destroy)
+   */
+  removeFaqSchema() {
+    document.getElementById(this.FAQ_SCHEMA_ID)?.remove();
+  }
+  /**
+   * Safety: schema text must be plain text
+   */
+  stripHtml(value) {
+    return value.replace(/<[^>]*>/g, "").trim();
+  }
+  static \u0275fac = function SeoSchemaService_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _SeoSchemaService)();
+  };
+  static \u0275prov = /* @__PURE__ */ \u0275\u0275defineInjectable({ token: _SeoSchemaService, factory: _SeoSchemaService.\u0275fac, providedIn: "root" });
+};
+
 // src/app/zip-text/zip-text.component.ts
 function ZipTextComponent_option_8_Template(rf, ctx) {
   if (rf & 1) {
@@ -59473,6 +59531,7 @@ var ZipTextComponent = class _ZipTextComponent {
   headerService = inject(HeaderService);
   commonService = inject(CommonService);
   router = inject(Router);
+  seoSchemaService = inject(SeoSchemaService);
   expiryTimes = [
     { text: "10 min", value: 10 },
     { text: "30 min", value: 30 },
@@ -59491,6 +59550,7 @@ var ZipTextComponent = class _ZipTextComponent {
       pageDescription: COMPONENT_DESCRIPTION.ZIP_TEXT,
       tabTitle: TAB_TITLE.ZIP_TEXT
     });
+    this.seoSchemaService.setFaqSchema(this.faqItems);
   }
   generateLink(botGuard) {
     const guardResult = botGuard.validate();
@@ -59590,7 +59650,7 @@ var ZipTextComponent = class _ZipTextComponent {
   ], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\nbutton[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\nbutton[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\nbutton[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n}\n.button-row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  flex-wrap: nowrap;\n  gap: 1rem;\n}\n.dropdown-group[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.dropdown-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  color: var(--primary);\n  white-space: nowrap;\n}\n.dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  padding: 0.5rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  border: 1px solid #ccc;\n  background: white;\n  color: #333;\n}\n.main-content-text[_ngcontent-%COMP%] {\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-text.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.footer-note[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 1rem auto;\n  font-size: 14px;\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .button-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 0.75rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%] {\n    width: 100%;\n    justify-content: space-between;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    flex: 1;\n    max-width: 60%;\n  }\n  button[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    max-width: 100%;\n    font-size: 13px;\n    margin: 0.75rem;\n    padding: 0 1rem;\n    text-align: center;\n  }\n}\n/*# sourceMappingURL=zip-text.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src/app/zip-text/zip-text.component.ts", lineNumber: 30 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src/app/zip-text/zip-text.component.ts", lineNumber: 31 });
 })();
 
 // src/app/copy-url-box/copy-url-box.component.ts
@@ -59847,6 +59907,7 @@ var ZipUrlComponent = class _ZipUrlComponent {
   fb;
   headerService = inject(HeaderService);
   commonService = inject(CommonService);
+  seoSchemaService = inject(SeoSchemaService);
   urlForm;
   loading = false;
   id = null;
@@ -59865,6 +59926,7 @@ var ZipUrlComponent = class _ZipUrlComponent {
       pageDescription: COMPONENT_DESCRIPTION.ZIP_URL,
       tabTitle: TAB_TITLE.ZIP_URL
     });
+    this.seoSchemaService.setFaqSchema(this.faqItems);
   }
   onSubmit(botGuard) {
     const guardResult = botGuard.validate();
@@ -59952,7 +60014,7 @@ var ZipUrlComponent = class _ZipUrlComponent {
   ], styles: ["\n\n.main-content-url[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  padding: 3rem 1rem;\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-url.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.tool-box[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  max-width: 800px;\n  width: 100%;\n  padding: 2rem;\n  text-align: center;\n}\n.tool-box[_ngcontent-%COMP%]   input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  margin-bottom: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  background: #f0f2f5;\n  color: black;\n}\n.tool-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n.tool-box[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\n.loader-overlay[_ngcontent-%COMP%] {\n  position: absolute;\n  inset: 0;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  background: rgba(0, 0, 0, 0.35);\n  -webkit-backdrop-filter: blur(2px);\n  backdrop-filter: blur(2px);\n  z-index: 10;\n  animation: _ngcontent-%COMP%_fadeIn 0.2s ease-in-out;\n  color: #fff;\n  font-weight: 500;\n}\n.loader-overlay[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  margin: 0;\n  color: #ddd;\n  opacity: 0.9;\n  font-size: 14px;\n  font-weight: 500;\n}\n.spinner[_ngcontent-%COMP%] {\n  width: 30px;\n  height: 30px;\n  border: 3px solid #ccc;\n  border-top-color: var(--secondary);\n  border-radius: 50%;\n  animation: _ngcontent-%COMP%_spin 0.8s linear infinite;\n  margin-bottom: 8px;\n}\n@keyframes _ngcontent-%COMP%_spin {\n  to {\n    transform: rotate(360deg);\n  }\n}\n@keyframes _ngcontent-%COMP%_fadeIn {\n  from {\n    opacity: 0;\n  }\n  to {\n    opacity: 1;\n  }\n}\n/*# sourceMappingURL=zip-url.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipUrlComponent, { className: "ZipUrlComponent", filePath: "src/app/zip-url/zip-url.component.ts", lineNumber: 38 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipUrlComponent, { className: "ZipUrlComponent", filePath: "src/app/zip-url/zip-url.component.ts", lineNumber: 39 });
 })();
 
 // node_modules/angularx-qrcode/fesm2022/angularx-qrcode.mjs
@@ -86692,6 +86754,7 @@ function ZipQrComponent_app_loader_overlay_8_Template(rf, ctx) {
 var ZipQrComponent = class _ZipQrComponent {
   platformId = inject(PLATFORM_ID);
   headerService = inject(HeaderService);
+  seoSchemaService = inject(SeoSchemaService);
   faqItems = ZIP_QR_FAQ;
   loading = false;
   mode = "generator";
@@ -86709,6 +86772,7 @@ var ZipQrComponent = class _ZipQrComponent {
       pageDescription: COMPONENT_DESCRIPTION.ZIP_QR,
       tabTitle: TAB_TITLE.ZIP_QR
     });
+    this.seoSchemaService.setFaqSchema(this.faqItems);
   }
   generateQr() {
     if (!isPlatformBrowser2(this.platformId))
@@ -86828,7 +86892,7 @@ var ZipQrComponent = class _ZipQrComponent {
   ], styles: ["\n\n.qr-container[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 3rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n}\n.qr-tabs[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  padding: 0.25rem;\n  margin-bottom: 1rem;\n}\n.qr-tabs[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  border-radius: 0.5rem;\n  border: none;\n  color: #666;\n  height: 2.5rem;\n  width: 45%;\n}\n.qr-tabs[_ngcontent-%COMP%]   button.active[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n}\n.qr-panel[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 1.1rem;\n}\n.qr-scanner[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  flex-direction: row;\n}\ninput[_ngcontent-%COMP%] {\n  padding: 1rem;\n  font-size: 1rem;\n  border-radius: 0.75rem;\n  border: 1px solid #ccc;\n}\n.qr-actions[_ngcontent-%COMP%]   button[_ngcontent-%COMP%], \nbutton.action-btn[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n.qr-actions[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]:hover, \nbutton.action-btn[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\nbutton.action-btn[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.qr-actions[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  padding: 0.4rem 0.8rem;\n}\n.qr-card[_ngcontent-%COMP%] {\n  position: relative;\n  padding: 1.5rem;\n  background: #eee;\n  border-radius: 0.75rem;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);\n}\n.qr-card[_ngcontent-%COMP%]   .close[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0.75rem;\n  right: 1rem;\n  cursor: pointer;\n  font-size: 1.1rem;\n  opacity: 0.6;\n}\n.qr-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 1rem;\n  margin-top: 1rem;\n}\nzxing-scanner[_ngcontent-%COMP%] {\n  width: 100%;\n  border-top-left-radius: 1rem;\n  border-top-right-radius: 1rem;\n  overflow: hidden;\n  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);\n  margin: 0 auto;\n}\n.scanner-card[_ngcontent-%COMP%] {\n  width: 45%;\n}\n.scan-result[_ngcontent-%COMP%] {\n  padding: 1rem;\n  background: white;\n  border-radius: 0.75rem;\n  color: #666;\n  width: 45%;\n}\n.scan-result-header[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  border-bottom: 1px solid #ddd;\n  padding-bottom: 0.3rem;\n}\n.scan-result-header[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n}\n.scan-result[_ngcontent-%COMP%]   .scan-result-content[_ngcontent-%COMP%] {\n  margin-top: 0.25rem;\n  word-break: break-all;\n  text-align: left;\n  color: #444;\n}\n.copy-text-btn[_ngcontent-%COMP%] {\n  background: none;\n  border: none;\n  cursor: pointer;\n  font-size: 1rem;\n  color: #555;\n  transition: color 0.25s ease, transform 0.2s ease;\n}\n.copy-text-btn[_ngcontent-%COMP%]:hover {\n  color: #000;\n}\n.copy-text-btn.copied[_ngcontent-%COMP%] {\n  color: #28a745;\n  transform: scale(1.1);\n}\n@media (max-width: 1024px) {\n  .qr-container[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .scanner-card[_ngcontent-%COMP%] {\n    width: 48%;\n  }\n  .scan-result[_ngcontent-%COMP%] {\n    padding: 1rem;\n    background: white;\n    border-radius: 0.75rem;\n    color: #666;\n    width: 48%;\n  }\n}\n@media (max-width: 991px) {\n  .scanner-card[_ngcontent-%COMP%] {\n    width: 48%;\n  }\n  .scan-result[_ngcontent-%COMP%] {\n    width: 48%;\n  }\n}\n@media (max-width: 575px) {\n  .qr-scanner[_ngcontent-%COMP%] {\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n  }\n  .scanner-card[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .scan-result[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .scan-result[_ngcontent-%COMP%] {\n    border-top-left-radius: 0;\n    border-top-right-radius: 0;\n  }\n}\n/*# sourceMappingURL=zip-qr.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipQrComponent, { className: "ZipQrComponent", filePath: "src/app/zip-qr/zip-qr.component.ts", lineNumber: 33 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipQrComponent, { className: "ZipQrComponent", filePath: "src/app/zip-qr/zip-qr.component.ts", lineNumber: 34 });
 })();
 
 // src/app/resolvers/social-meta.resolver.ts
@@ -87480,7 +87544,7 @@ var FooterComponent = class _FooterComponent {
       \u0275\u0275text(9, "Tools");
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(10, "ul", 7)(11, "li")(12, "a", 8);
-      \u0275\u0275text(13, "Text Sharing");
+      \u0275\u0275text(13, "Online Text Transfer");
       \u0275\u0275elementEnd()();
       \u0275\u0275elementStart(14, "li")(15, "a", 9);
       \u0275\u0275text(16, "URL Shortener");
