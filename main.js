@@ -39338,7 +39338,7 @@ var RedirectionType;
 })(RedirectionType || (RedirectionType = {}));
 var TAB_TITLE;
 (function(TAB_TITLE2) {
-  TAB_TITLE2["ZIP_TEXT"] = "Text Transfer Online \u2013 Secure Text Uploader with Expiry | ZipUtils";
+  TAB_TITLE2["ZIP_TEXT"] = "Online Text Transfer Tool \u2013 Secure Text Uploader | ZipUtils";
   TAB_TITLE2["ZIP_URL"] = "URL Shortener \u2013 Create Short Links Instantly | ZipUtils";
   TAB_TITLE2["ZIP_QR"] = "QR Code Generator/Scanner \u2013 Create/Scan QR Codes for Links or Text | ZipUtils";
 })(TAB_TITLE || (TAB_TITLE = {}));
