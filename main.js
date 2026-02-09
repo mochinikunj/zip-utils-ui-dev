@@ -39324,7 +39324,7 @@ var PAGE_TITLE;
 })(PAGE_TITLE || (PAGE_TITLE = {}));
 var PAGE_DESCRIPTION;
 (function(PAGE_DESCRIPTION2) {
-  PAGE_DESCRIPTION2["ZIP_UTILS"] = "\u26A1 One place. Many tools. Simply fast.";
+  PAGE_DESCRIPTION2["ZIP_UTILS"] = "\u26A1 ZipUtils is a free online utility platform to securely transfer text, shorten long URLs, and generate QR codes instantly. All tools work directly in your browser with a focus on speed, privacy, and simplicity. \u{1F512}";
   PAGE_DESCRIPTION2["ZIP_TEXT"] = "\u{1F4AC} Paste and share instantly with a unique, secure link. \u{1F512}";
   PAGE_DESCRIPTION2["ZIP_URL"] = "\u{1F517} Create short, simple, and shareable links in seconds.";
   PAGE_DESCRIPTION2["ZIP_QR"] = "\u{1F4F1} Generate/Scan QR codes for links, text, or data \u2014 in one click.";
