@@ -39009,6 +39009,19 @@ var ROUTER_IS_PROVIDED = new InjectionToken("", {
   providedIn: "root",
   factory: () => false
 });
+function withInMemoryScrolling(options = {}) {
+  const providers = [{
+    provide: ROUTER_SCROLLER,
+    useFactory: () => {
+      const viewportScroller = inject(ViewportScroller);
+      const zone = inject(NgZone);
+      const transitions = inject(NavigationTransitions);
+      const urlSerializer = inject(UrlSerializer);
+      return new RouterScroller(urlSerializer, transitions, viewportScroller, zone, options);
+    }
+  }];
+  return routerFeature(4, providers);
+}
 function getBootstrapListener() {
   const injector = inject(Injector);
   return (bootstrappedComponentRef) => {
@@ -87544,7 +87557,9 @@ var HttpLink2 = class _HttpLink {
 var appConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
-    provideRouter(routes),
+    provideRouter(routes, withInMemoryScrolling({
+      scrollPositionRestoration: "top"
+    })),
     provideClientHydration(),
     provideHttpClient(withFetch()),
     provideApollo(() => {
