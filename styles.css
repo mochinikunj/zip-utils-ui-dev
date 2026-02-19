@@ -16035,8 +16035,8 @@ body {
       var(--secondary));
   --scrollbar-color: var(--primary);
   --faq-ans-color: #374151;
-  --faq-title-hover-color: #1D4ED8;
-  --faq-title-expand-color: #1E40AF;
+  --faq-title-hover-color: #1d4ed8;
+  --faq-title-expand-color: #1e40af;
 }
 [data-theme=dark] {
   --bg: #121212;
