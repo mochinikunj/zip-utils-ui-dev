@@ -59344,6 +59344,10 @@ var ZIP_TEXT_FAQ = [
     answer: "Yes. You can choose an expiry time when generating the link. Once the expiry time is reached, the text is permanently deleted."
   },
   {
+    question: "Can I create a custom link for my shared text?",
+    answer: "Yes. ZipUtils allows you to create a custom link for your uploaded text instead of a random one. Simply enter a custom link name (if available), and your text will be accessible using that personalized URL."
+  },
+  {
     question: "Can I share links or create QR codes instead of sharing text?",
     answer: 'Yes. If you only need to share a website link, you can use the <a href="/url/">URL Shortener</a> to create a clean, shareable link. You can also generate a <a href="/qr/">QR Code</a> for your text or links to make sharing easier on mobile or offline.'
   }
@@ -59584,6 +59588,8 @@ var CustomLinkComponent = class _CustomLinkComponent {
   prefixPath = "";
   available = null;
   checking = false;
+  /** When true, do not update availability UI (e.g. Generate was clicked, suppress blur result) */
+  suppressAvailabilityUi = false;
   router = inject(Router);
   commonService = inject(CommonService);
   ngOnInit() {
@@ -59595,50 +59601,89 @@ var CustomLinkComponent = class _CustomLinkComponent {
     }
   }
   onBlur() {
-    const value = this.customLink;
-    if (!value) {
-      this.available = null;
-      this.availabilityChange.emit(null);
-      this.slugChange.emit(null);
-      return;
-    }
-    if (!this.allowedPattern.test(value)) {
-      this.available = false;
-      this.availabilityChange.emit(false);
-      this.slugChange.emit(null);
-      return;
-    }
-    if (value.length < 2 || value.length > 50) {
-      this.available = false;
-      this.availabilityChange.emit(false);
-      this.slugChange.emit(null);
-      return;
-    }
-    if (value.includes("--")) {
-      this.available = false;
-      this.availabilityChange.emit(false);
-      this.slugChange.emit(null);
-      return;
-    }
-    if (value.length < 2) {
-      this.available = false;
-      this.availabilityChange.emit(false);
-      this.slugChange.emit(null);
-      return;
-    }
-    this.checking = true;
-    this.commonService.checkShortIdAvailability(value, this.mapToGraphQLType()).subscribe({
-      next: (res) => {
-        this.available = res.data.isShortIdAvailable;
-        this.checking = false;
-        this.availabilityChange.emit(this.available);
-        this.slugChange.emit(value);
-      },
-      error: () => {
-        this.available = null;
-        this.checking = false;
-        this.availabilityChange.emit(null);
+    this.performAvailabilityCheck(false);
+  }
+  /** @param silent When true, don't update UI or emit (e.g. when triggered by Generate button) */
+  checkAvailability(silent = false) {
+    return this.performAvailabilityCheck(silent);
+  }
+  performAvailabilityCheck(silent) {
+    return new Promise((resolve) => {
+      const value = this.customLink;
+      if (!value) {
+        if (!silent) {
+          this.available = null;
+          this.availabilityChange.emit(null);
+          this.slugChange.emit(null);
+        }
+        resolve(null);
+        return;
       }
+      if (!this.allowedPattern.test(value)) {
+        if (!silent) {
+          this.available = false;
+          this.availabilityChange.emit(false);
+          this.slugChange.emit(null);
+        }
+        resolve(false);
+        return;
+      }
+      if (value.length < 2 || value.length > 50) {
+        if (!silent) {
+          this.available = false;
+          this.availabilityChange.emit(false);
+          this.slugChange.emit(null);
+        }
+        resolve(false);
+        return;
+      }
+      if (value.includes("--")) {
+        if (!silent) {
+          this.available = false;
+          this.availabilityChange.emit(false);
+          this.slugChange.emit(null);
+        }
+        resolve(false);
+        return;
+      }
+      if (value.length < 2) {
+        if (!silent) {
+          this.available = false;
+          this.availabilityChange.emit(false);
+          this.slugChange.emit(null);
+        }
+        resolve(false);
+        return;
+      }
+      if (!silent) {
+        this.checking = true;
+      }
+      this.commonService.checkShortIdAvailability(value, this.mapToGraphQLType()).subscribe({
+        next: (res) => {
+          const result2 = res.data.isShortIdAvailable;
+          const shouldUpdateUi = !silent && !this.suppressAvailabilityUi;
+          if (shouldUpdateUi) {
+            this.available = result2;
+            this.checking = false;
+            this.availabilityChange.emit(this.available);
+            this.slugChange.emit(value);
+          } else if (!silent) {
+            this.checking = false;
+          }
+          resolve(result2);
+        },
+        error: () => {
+          const shouldUpdateUi = !silent && !this.suppressAvailabilityUi;
+          if (shouldUpdateUi) {
+            this.available = null;
+            this.checking = false;
+            this.availabilityChange.emit(null);
+          } else if (!silent) {
+            this.checking = false;
+          }
+          resolve(null);
+        }
+      });
     });
   }
   mapToGraphQLType() {
@@ -59654,7 +59699,7 @@ var CustomLinkComponent = class _CustomLinkComponent {
   static \u0275fac = function CustomLinkComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _CustomLinkComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _CustomLinkComponent, selectors: [["app-custom-link"]], outputs: { availabilityChange: "availabilityChange", slugChange: "slugChange" }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 11, vars: 6, consts: [["for", "customLink", 1, "custom-link-label"], [1, "custom-link-group"], [1, "url-prefix"], ["type", "text", "id", "customLink", "maxlength", "20", "placeholder", "my-custom-link", "maxlength", "50", 1, "custom-link-input", 3, "ngModelChange", "blur", "ngModel"], [1, "helper-text"], ["class", "availability", 4, "ngIf"], ["class", "availability available", 4, "ngIf"], ["class", "availability unavailable", 4, "ngIf"], [1, "availability"], [1, "availability", "available"], [1, "availability-dot"], [1, "availability", "unavailable"]], template: function CustomLinkComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _CustomLinkComponent, selectors: [["app-custom-link"]], outputs: { availabilityChange: "availabilityChange", slugChange: "slugChange" }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 11, vars: 6, consts: [["for", "customLink", 1, "custom-link-label"], [1, "custom-link-group"], [1, "url-prefix"], ["type", "text", "id", "customLink", "placeholder", "my-custom-link", "maxlength", "50", 1, "custom-link-input", 3, "ngModelChange", "blur", "ngModel"], [1, "helper-text"], ["class", "availability", 4, "ngIf"], ["class", "availability available", 4, "ngIf"], ["class", "availability unavailable", 4, "ngIf"], [1, "availability"], [1, "availability", "available"], [1, "availability-dot"], [1, "availability", "unavailable"]], template: function CustomLinkComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "label", 0);
       \u0275\u0275text(1, " Custom Link ");
@@ -59667,7 +59712,9 @@ var CustomLinkComponent = class _CustomLinkComponent {
         \u0275\u0275twoWayBindingSet(ctx.customLink, $event) || (ctx.customLink = $event);
         return $event;
       });
-      \u0275\u0275listener("blur", function CustomLinkComponent_Template_input_blur_5_listener() {
+      \u0275\u0275listener("ngModelChange", function CustomLinkComponent_Template_input_ngModelChange_5_listener($event) {
+        return ctx.slugChange.emit($event);
+      })("blur", function CustomLinkComponent_Template_input_blur_5_listener() {
         return ctx.onBlur();
       });
       \u0275\u0275elementEnd()();
@@ -59688,7 +59735,7 @@ var CustomLinkComponent = class _CustomLinkComponent {
       \u0275\u0275advance();
       \u0275\u0275property("ngIf", ctx.available === false);
     }
-  }, dependencies: [CommonModule, NgIf, FormsModule, DefaultValueAccessor, NgControlStatus, MaxLengthValidator, NgModel], styles: ["\n\n[_nghost-%COMP%] {\n  display: contents;\n}\nlabel[_ngcontent-%COMP%] {\n  color: var(--primary);\n  display: flex;\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.custom-link-group[_ngcontent-%COMP%] {\n  border: 2px solid #4a5568;\n  border-radius: 8px;\n  padding: 12px 16px;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  transition: all 0.2s;\n}\n.url-prefix[_ngcontent-%COMP%] {\n  font-size: 15px;\n  white-space: nowrap;\n}\n.custom-link-input[_ngcontent-%COMP%] {\n  flex: 1;\n  border: none;\n  background: transparent;\n  padding: 0;\n  color: white;\n  font-size: 15px;\n}\n.helper-text[_ngcontent-%COMP%] {\n  font-size: 12px;\n  margin-top: 6px;\n  display: flex;\n}\n.availability[_ngcontent-%COMP%] {\n  margin-top: 6px;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  font-size: 13px;\n  font-weight: 500;\n}\n.availability[_ngcontent-%COMP%]:not(.available):not(.unavailable) {\n  color: #6b7280;\n}\n.availability.available[_ngcontent-%COMP%] {\n  color: #16a34a;\n}\n.availability.unavailable[_ngcontent-%COMP%] {\n  color: #dc2626;\n}\n.availability-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background-color: currentColor;\n}\n/*# sourceMappingURL=custom-link.component.css.map */"] });
+  }, dependencies: [CommonModule, NgIf, FormsModule, DefaultValueAccessor, NgControlStatus, MaxLengthValidator, NgModel], styles: ["\n\n[_nghost-%COMP%] {\n  display: contents;\n}\nlabel[_ngcontent-%COMP%] {\n  color: var(--primary);\n  display: flex;\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.custom-link-group[_ngcontent-%COMP%] {\n  border: 2px solid #4a5568;\n  border-radius: 8px;\n  padding: 12px 16px;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  transition: all 0.2s;\n}\n.url-prefix[_ngcontent-%COMP%] {\n  font-size: 15px;\n  white-space: nowrap;\n}\n.custom-link-input[_ngcontent-%COMP%] {\n  flex: 1;\n  border: none;\n  background: transparent;\n  padding: 0;\n  color: var(--text);\n  font-size: 15px;\n}\n.helper-text[_ngcontent-%COMP%] {\n  font-size: 12px;\n  margin-top: 6px;\n  display: flex;\n}\n.availability[_ngcontent-%COMP%] {\n  margin-top: 6px;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  font-size: 13px;\n  font-weight: 500;\n}\n.availability[_ngcontent-%COMP%]:not(.available):not(.unavailable) {\n  color: #6b7280;\n}\n.availability.available[_ngcontent-%COMP%] {\n  color: #16a34a;\n}\n.availability.unavailable[_ngcontent-%COMP%] {\n  color: #dc2626;\n}\n.availability-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background-color: currentColor;\n}\n@media (max-width: 480px) {\n  .url-prefix[_ngcontent-%COMP%] {\n    font-size: 13px;\n  }\n  .custom-link-input[_ngcontent-%COMP%] {\n    font-size: 13px;\n  }\n}\n/*# sourceMappingURL=custom-link.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(CustomLinkComponent, { className: "CustomLinkComponent", filePath: "src/app/shared/components/custom-link/custom-link.component.ts", lineNumber: 17 });
@@ -59697,7 +59744,7 @@ var CustomLinkComponent = class _CustomLinkComponent {
 // src/app/zip-text/zip-text.component.ts
 function ZipTextComponent_option_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 14);
+    \u0275\u0275elementStart(0, "option", 15);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -59708,9 +59755,9 @@ function ZipTextComponent_option_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", expiryTime_r2.text, " ");
   }
 }
-function ZipTextComponent_app_loader_overlay_15_Template(rf, ctx) {
+function ZipTextComponent_app_loader_overlay_16_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "app-loader-overlay", 15);
+    \u0275\u0275element(0, "app-loader-overlay", 16);
   }
   if (rf & 2) {
     \u0275\u0275property("message", "Generating link...");
@@ -59721,6 +59768,7 @@ var ZipTextComponent = class _ZipTextComponent {
   commonService = inject(CommonService);
   router = inject(Router);
   seoSchemaService = inject(SeoSchemaService);
+  customLinkComponent;
   expiryTimes = [
     { text: "10 min", value: 10 },
     { text: "30 min", value: 30 },
@@ -59735,6 +59783,7 @@ var ZipTextComponent = class _ZipTextComponent {
   faqItems = ZIP_TEXT_FAQ;
   isSlugAvailable = null;
   customSlug = null;
+  checkingSlug = false;
   ngOnInit() {
     this.headerService.setTitleAndDescription({
       pageTitle: COMPONENT_TITLE.ZIP_TEXT,
@@ -59744,62 +59793,96 @@ var ZipTextComponent = class _ZipTextComponent {
     this.seoSchemaService.setFaqSchema(this.faqItems);
   }
   generateLink(botGuard) {
-    const guardResult = botGuard.validate();
-    if (!guardResult.valid) {
-      console.warn("Blocked by bot guard:", guardResult.reason);
-      return;
-    }
-    if (!this.textInput.trim())
-      return;
-    this.loading = true;
-    this.commonService.setTempText(this.textInput);
-    const expiry = this.expiryInMinutes ? parseInt(this.expiryInMinutes.toString(), 10) : null;
-    this.commonService.generateZipTextUrl(this.textInput, expiry, this.customSlug).subscribe({
-      next: (response) => {
-        const id = response.data?.generateZipTextUrl;
-        if (id) {
-          setTimeout(() => {
+    return __async(this, null, function* () {
+      const guardResult = botGuard.validate();
+      if (!guardResult.valid) {
+        console.warn("Blocked by bot guard:", guardResult.reason);
+        return;
+      }
+      if (!this.textInput.trim())
+        return;
+      if (this.customSlug && this.isSlugAvailable === null && !this.checkingSlug) {
+        this.customLinkComponent.suppressAvailabilityUi = true;
+        this.checkingSlug = true;
+        const availability = yield this.customLinkComponent.checkAvailability(true);
+        this.checkingSlug = false;
+        if (availability === false) {
+          this.customLinkComponent.suppressAvailabilityUi = false;
+          return;
+        }
+        setTimeout(() => this.customLinkComponent.suppressAvailabilityUi = false, 800);
+      }
+      if (this.customSlug && this.isSlugAvailable === false) {
+        return;
+      }
+      this.loading = true;
+      this.commonService.setTempText(this.textInput);
+      const expiry = this.expiryInMinutes ? parseInt(this.expiryInMinutes.toString(), 10) : null;
+      this.commonService.generateZipTextUrl(this.textInput, expiry, this.customSlug).subscribe({
+        next: (response) => {
+          const id = response.data?.generateZipTextUrl;
+          if (id) {
+            setTimeout(() => {
+              this.loading = false;
+              this.router.navigate(["/t", id]);
+            }, 300);
+          } else {
             this.loading = false;
-            this.router.navigate(["/t", id]);
-          }, 300);
-        } else {
+          }
+        },
+        error: (err) => {
+          const msg = err?.graphQLErrors?.[0]?.message || "Unable to generate link";
+          alert(msg);
+        },
+        complete: () => {
           this.loading = false;
         }
-      },
-      error: (err) => console.error("Error generating link", err)
+      });
     });
   }
   onSlugAvailabilityChange(value) {
     this.isSlugAvailable = value;
   }
   onSlugChange(slug) {
+    const slugChanged = slug !== this.customSlug;
     this.customSlug = slug;
+    if (slugChanged) {
+      this.isSlugAvailable = null;
+    }
   }
   static \u0275fac = function ZipTextComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipTextComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextComponent, selectors: [["app-zip-text"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 19, vars: 8, consts: [["botGuard", ""], [1, "main-content-text"], ["rows", "8", "placeholder", "Paste your text here...", 1, "textInput", 3, "ngModelChange", "ngModel"], [1, "controls"], [1, "control-row"], [1, "control-group"], ["for", "expiry-select"], ["id", "expiry-select", 3, "ngModelChange", "ngModel"], [3, "value", 4, "ngFor", "ngForOf"], [3, "availabilityChange", "slugChange"], [3, "click", "disabled"], [3, "message", 4, "ngIf"], [1, "footer-note"], [3, "items"], [3, "value"], [3, "message"]], template: function ZipTextComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextComponent, selectors: [["app-zip-text"]], viewQuery: function ZipTextComponent_Query(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275viewQuery(CustomLinkComponent, 5);
+    }
+    if (rf & 2) {
+      let _t;
+      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.customLinkComponent = _t.first);
+    }
+  }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 20, vars: 8, consts: [["customLink", ""], ["botGuard", ""], [1, "main-content-text"], ["rows", "8", "placeholder", "Paste your text here...", 1, "textInput", 3, "ngModelChange", "ngModel"], [1, "controls"], [1, "control-row"], [1, "control-group"], ["for", "expiry-select"], ["id", "expiry-select", 3, "ngModelChange", "ngModel"], [3, "value", 4, "ngFor", "ngForOf"], [3, "availabilityChange", "slugChange"], [3, "click", "disabled"], [3, "message", 4, "ngIf"], [1, "footer-note"], [3, "items"], [3, "value"], [3, "message"]], template: function ZipTextComponent_Template(rf, ctx) {
     if (rf & 1) {
       const _r1 = \u0275\u0275getCurrentView();
-      \u0275\u0275elementStart(0, "div", 1)(1, "textarea", 2);
+      \u0275\u0275elementStart(0, "div", 2)(1, "textarea", 3);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_textarea_ngModelChange_1_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.textInput, $event) || (ctx.textInput = $event);
         return \u0275\u0275resetView($event);
       });
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(2, "div", 3)(3, "div", 4)(4, "div", 5)(5, "label", 6);
+      \u0275\u0275elementStart(2, "div", 4)(3, "div", 5)(4, "div", 6)(5, "label", 7);
       \u0275\u0275text(6, "Expiry Time");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(7, "select", 7);
+      \u0275\u0275elementStart(7, "select", 8);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_select_ngModelChange_7_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.expiryInMinutes, $event) || (ctx.expiryInMinutes = $event);
         return \u0275\u0275resetView($event);
       });
-      \u0275\u0275template(8, ZipTextComponent_option_8_Template, 2, 2, "option", 8);
+      \u0275\u0275template(8, ZipTextComponent_option_8_Template, 2, 2, "option", 9);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(9, "div", 5)(10, "app-custom-link", 9);
+      \u0275\u0275elementStart(9, "div", 6)(10, "app-custom-link", 10, 0);
       \u0275\u0275listener("availabilityChange", function ZipTextComponent_Template_app_custom_link_availabilityChange_10_listener($event) {
         \u0275\u0275restoreView(_r1);
         return \u0275\u0275resetView(ctx.onSlugAvailabilityChange($event));
@@ -59808,20 +59891,20 @@ var ZipTextComponent = class _ZipTextComponent {
         return \u0275\u0275resetView(ctx.onSlugChange($event));
       });
       \u0275\u0275elementEnd()()();
-      \u0275\u0275element(11, "app-bot-guard", null, 0);
-      \u0275\u0275elementStart(13, "button", 10);
-      \u0275\u0275listener("click", function ZipTextComponent_Template_button_click_13_listener() {
+      \u0275\u0275element(12, "app-bot-guard", null, 1);
+      \u0275\u0275elementStart(14, "button", 11);
+      \u0275\u0275listener("click", function ZipTextComponent_Template_button_click_14_listener() {
         \u0275\u0275restoreView(_r1);
-        const botGuard_r3 = \u0275\u0275reference(12);
+        const botGuard_r3 = \u0275\u0275reference(13);
         return \u0275\u0275resetView(ctx.generateLink(botGuard_r3));
       });
-      \u0275\u0275text(14, " Generate Link ");
+      \u0275\u0275text(15, " Generate Link ");
       \u0275\u0275elementEnd()();
-      \u0275\u0275template(15, ZipTextComponent_app_loader_overlay_15_Template, 1, 1, "app-loader-overlay", 11);
-      \u0275\u0275elementStart(16, "p", 12);
-      \u0275\u0275text(17, " Note - We encrypt every message before storing it, ensuring complete privacy. No one can access your text, and it\u2019s permanently removed once the expiry time is reached. ");
+      \u0275\u0275template(16, ZipTextComponent_app_loader_overlay_16_Template, 1, 1, "app-loader-overlay", 12);
+      \u0275\u0275elementStart(17, "p", 13);
+      \u0275\u0275text(18, " Note - We encrypt every message before storing it, ensuring complete privacy. No one can access your text, and it\u2019s permanently removed once the expiry time is reached. ");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(18, "app-faq", 13);
+      \u0275\u0275element(19, "app-faq", 14);
     }
     if (rf & 2) {
       \u0275\u0275classProp("fade-out", ctx.loading);
@@ -59831,7 +59914,7 @@ var ZipTextComponent = class _ZipTextComponent {
       \u0275\u0275twoWayProperty("ngModel", ctx.expiryInMinutes);
       \u0275\u0275advance();
       \u0275\u0275property("ngForOf", ctx.expiryTimes);
-      \u0275\u0275advance(5);
+      \u0275\u0275advance(6);
       \u0275\u0275property("disabled", !ctx.textInput.trim() || ctx.isSlugAvailable === false);
       \u0275\u0275advance(2);
       \u0275\u0275property("ngIf", ctx.loading);
@@ -59853,7 +59936,7 @@ var ZipTextComponent = class _ZipTextComponent {
     BotGuardComponent,
     FaqComponent,
     CustomLinkComponent
-  ], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\n.textInput[_ngcontent-%COMP%]:focus {\n  outline: 3px solid #667eea;\n}\nbutton[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  font-weight: 600;\n  transition: transform 0.2s, box-shadow 0.2s;\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n}\nbutton[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);\n}\nbutton[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.controls[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.control-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 20px;\n  align-items: flex-start;\n}\n.control-group[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n}\n.control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  color: var(--primary);\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: flex;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  cursor: pointer;\n  padding: 12px 16px;\n  border: 2px solid #4a5568;\n  border-radius: 8px;\n  font-size: 15px;\n  background: transparent;\n  color: var(--text);\n  font-family: inherit;\n  transition: all 0.2s;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #667eea;\n  background: transparent;\n}\n.dropdown-group[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.dropdown-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  color: var(--primary);\n  white-space: nowrap;\n}\n.dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  padding: 0.5rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  border: 1px solid #ccc;\n  background: white;\n  color: #333;\n}\n.main-content-text[_ngcontent-%COMP%] {\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-text.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.footer-note[_ngcontent-%COMP%] {\n  font-size: 13px;\n  text-align: center;\n  margin-top: 24px;\n  line-height: 1.6;\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .button-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 0.75rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%] {\n    width: 100%;\n    justify-content: space-between;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    flex: 1;\n    max-width: 60%;\n  }\n  button[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    max-width: 100%;\n    font-size: 13px;\n    margin: 0.75rem;\n    padding: 0 1rem;\n    text-align: center;\n  }\n}\n/*# sourceMappingURL=zip-text.component.css.map */"] });
+  ], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n  box-sizing: border-box;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\n.textInput[_ngcontent-%COMP%]:focus {\n  outline: 3px solid #667eea;\n}\nbutton[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  font-weight: 600;\n  transition: transform 0.2s, box-shadow 0.2s;\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n}\nbutton[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);\n}\nbutton[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.controls[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.control-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 20px;\n  align-items: flex-start;\n}\n.control-group[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n}\n.control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  color: var(--primary);\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: flex;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  cursor: pointer;\n  padding: 12px 16px;\n  border: 2px solid #4a5568;\n  border-radius: 8px;\n  font-size: 15px;\n  background: transparent;\n  color: var(--text);\n  font-family: inherit;\n  transition: all 0.2s;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #667eea;\n  background: transparent;\n}\n.dropdown-group[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.dropdown-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  color: var(--primary);\n  white-space: nowrap;\n}\n.dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  padding: 0.5rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  border: 1px solid #ccc;\n  background: white;\n  color: #333;\n}\n.main-content-text[_ngcontent-%COMP%] {\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-text.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.footer-note[_ngcontent-%COMP%] {\n  font-size: 13px;\n  text-align: center;\n  margin-top: 24px;\n  line-height: 1.6;\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .button-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 0.75rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%] {\n    width: 100%;\n    justify-content: space-between;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    flex: 1;\n    max-width: 60%;\n  }\n  button[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    max-width: 100%;\n    font-size: 13px;\n    margin: 0.75rem;\n    padding: 0 1rem;\n    text-align: center;\n  }\n}\n@media (max-width: 768px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 1rem;\n    border-radius: 0.75rem;\n  }\n  .control-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n  }\n  textarea[_ngcontent-%COMP%], \n   input[type=text][_ngcontent-%COMP%], \n   select[_ngcontent-%COMP%] {\n    width: 100%;\n    box-sizing: border-box;\n  }\n  textarea.textInput[_ngcontent-%COMP%] {\n    rows: 6;\n    min-height: 120px;\n    padding: 0.75rem;\n    font-size: 16px;\n  }\n  button[_ngcontent-%COMP%] {\n    width: 100%;\n    padding: 14px 16px;\n    font-size: 1rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%], \n   .control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    width: 100%;\n    max-width: 100% !important;\n  }\n  .controls[_ngcontent-%COMP%] {\n    gap: 16px;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    font-size: 12px;\n    margin-top: 16px;\n    padding: 0 0.25rem;\n  }\n}\n@media (max-width: 480px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 0.75rem;\n  }\n  .main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n    font-size: 1.1rem;\n    margin-bottom: 0.75rem;\n  }\n  .control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n    font-size: 12px;\n  }\n}\n/*# sourceMappingURL=zip-text.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src/app/zip-text/zip-text.component.ts", lineNumber: 33 });
@@ -88008,6 +88091,11 @@ var AppComponent = class _AppComponent {
   handleTextViewerRedirection(id) {
     if (!id) {
       this.changeScreenToShowNotFoundPage();
+      return;
+    }
+    const tempText = this.commonService.getTempText();
+    if (tempText) {
+      this.changeScreenToShowApp();
       return;
     }
     this.commonService.getZipText(id).subscribe({
