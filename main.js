@@ -60430,7 +60430,7 @@ var ZipFileComponent = class _ZipFileComponent {
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipFileComponent, selectors: [["app-zip-file"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 2, vars: 0, template: function ZipFileComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "p");
-      \u0275\u0275text(1, "Zip Transfer \u2013 Coming Soon \u{1F680}");
+      \u0275\u0275text(1, "File Transfer \u2013 Coming Soon \u{1F680}");
       \u0275\u0275elementEnd();
     }
   } });
