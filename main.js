@@ -39333,6 +39333,7 @@ var PAGE_TITLE;
   PAGE_TITLE2["ZIP_TEXT"] = "Text Uploader";
   PAGE_TITLE2["ZIP_URL"] = "URL Shortener";
   PAGE_TITLE2["ZIP_QR"] = "QR Code Generator/Scanner";
+  PAGE_TITLE2["ZIP_FILE"] = "File Transfer";
   PAGE_TITLE2["NOT_FOUND"] = "Page Not Found!";
 })(PAGE_TITLE || (PAGE_TITLE = {}));
 var PAGE_DESCRIPTION;
@@ -39341,6 +39342,7 @@ var PAGE_DESCRIPTION;
   PAGE_DESCRIPTION2["ZIP_TEXT"] = "\u{1F4AC} Paste and share instantly with a unique, secure link. \u{1F512}";
   PAGE_DESCRIPTION2["ZIP_URL"] = "\u{1F517} Create short, simple, and shareable links in seconds.";
   PAGE_DESCRIPTION2["ZIP_QR"] = "\u{1F4F1} Generate/Scan QR codes for links, text, or data \u2014 in one click.";
+  PAGE_DESCRIPTION2["ZIP_FILE"] = "\u{1F4C1} Upload and share files securely with a temporary download link. \u{1F512}";
   PAGE_DESCRIPTION2["NOT_FOUND"] = "The page you are looking for does not exist or may have been moved.";
 })(PAGE_DESCRIPTION || (PAGE_DESCRIPTION = {}));
 var RedirectionType;
@@ -39443,7 +39445,7 @@ var HomeComponent = class _HomeComponent {
   static \u0275fac = function HomeComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _HomeComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _HomeComponent, selectors: [["app-home"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 28, vars: 6, consts: [[1, "tools-container", "d-flex", "justify-content-center", "flex-wrap", "py-5", "px-3"], [1, "tool-card"], [1, "tool-icon"], ["routerLink", "/text/"], ["routerLink", "/url/"], ["routerLink", "/qr/"]], template: function HomeComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _HomeComponent, selectors: [["app-home"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 37, vars: 8, consts: [[1, "tools-container", "py-5", "px-3"], [1, "tool-card"], [1, "tool-icon"], ["routerLink", "/text/"], ["routerLink", "/url/"], ["routerLink", "/qr/"], ["routerLink", "/file/"]], template: function HomeComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "div", 2);
       \u0275\u0275text(3, "\u{1F4DD}");
@@ -39480,6 +39482,18 @@ var HomeComponent = class _HomeComponent {
       \u0275\u0275elementEnd();
       \u0275\u0275elementStart(26, "button", 5);
       \u0275\u0275text(27, "Go to Tool");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(28, "div", 1)(29, "div", 2);
+      \u0275\u0275text(30, "\u{1F4C1}");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(31, "h2");
+      \u0275\u0275text(32);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(33, "p");
+      \u0275\u0275text(34);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(35, "button", 6);
+      \u0275\u0275text(36, "Go to Tool");
       \u0275\u0275elementEnd()()();
     }
     if (rf & 2) {
@@ -39495,8 +39509,12 @@ var HomeComponent = class _HomeComponent {
       \u0275\u0275textInterpolate(ctx.TITLE.ZIP_QR);
       \u0275\u0275advance(2);
       \u0275\u0275textInterpolate(ctx.DESCRIPTION.ZIP_QR);
+      \u0275\u0275advance(7);
+      \u0275\u0275textInterpolate(ctx.TITLE.ZIP_FILE);
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.DESCRIPTION.ZIP_FILE);
     }
-  }, dependencies: [RouterModule, RouterLink], styles: ["\n\n.tools-container[_ngcontent-%COMP%] {\n  gap: 2rem;\n}\n.tool-card[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  width: 100%;\n  max-width: 400px;\n  padding: 2rem;\n  text-align: center;\n  transition: transform 0.2s ease, box-shadow 0.2s ease;\n  cursor: pointer;\n}\n.tool-card[_ngcontent-%COMP%]:hover {\n  transform: translateY(-3px);\n  box-shadow: 0 10px 20px var(--shadow);\n}\n.tool-card[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  margin-top: 0.5rem;\n  font-size: 1.6rem;\n  font-weight: bold;\n  color: var(--primary);\n}\n.tool-card[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 0.95rem;\n  color: inherit;\n  margin: 1.3rem auto;\n}\n.tool-card[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.6rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n.tool-card[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\n.tool-icon[_ngcontent-%COMP%] {\n  font-size: 3rem;\n  color: var(--secondary);\n  margin-bottom: 1rem;\n}\n@media screen and (max-width: 768px) {\n  header[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n    font-size: 2rem;\n  }\n  .tool-card[_ngcontent-%COMP%] {\n    max-width: 90%;\n  }\n}\n/*# sourceMappingURL=home.component.css.map */"] });
+  }, dependencies: [RouterModule, RouterLink], styles: ["\n\n.tools-container[_ngcontent-%COMP%] {\n  display: grid;\n  grid-template-columns: repeat(3, max-content);\n  justify-content: center;\n  column-gap: 2rem;\n  row-gap: 2rem;\n}\n.tool-card[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  width: 100%;\n  max-width: 400px;\n  padding: 2rem;\n  text-align: center;\n  transition: transform 0.2s ease, box-shadow 0.2s ease;\n  cursor: pointer;\n}\n.tool-card[_ngcontent-%COMP%]:hover {\n  transform: translateY(-3px);\n  box-shadow: 0 10px 20px var(--shadow);\n}\n.tool-card[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  margin-top: 0.5rem;\n  font-size: 1.6rem;\n  font-weight: bold;\n  color: var(--primary);\n}\n.tool-card[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 0.95rem;\n  color: inherit;\n  margin: 1.3rem auto;\n}\n.tool-card[_ngcontent-%COMP%]   button[_ngcontent-%COMP%] {\n  background: var(--primary);\n  color: white;\n  border: none;\n  padding: 0.6rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n  transition: background 0.3s;\n}\n.tool-card[_ngcontent-%COMP%]   button[_ngcontent-%COMP%]:hover {\n  background: var(--secondary);\n}\n.tool-icon[_ngcontent-%COMP%] {\n  font-size: 3rem;\n  color: var(--secondary);\n  margin-bottom: 1rem;\n}\n@media screen and (max-width: 768px) {\n  header[_ngcontent-%COMP%]   h1[_ngcontent-%COMP%] {\n    font-size: 2rem;\n  }\n  .tool-card[_ngcontent-%COMP%] {\n    max-width: 90%;\n  }\n}\n@media (max-width: 1024px) {\n  .tools-container[_ngcontent-%COMP%] {\n    grid-template-columns: repeat(2, 1fr);\n  }\n  .tool-card[_ngcontent-%COMP%] {\n    max-width: 100%;\n  }\n}\n@media (max-width: 600px) {\n  .tools-container[_ngcontent-%COMP%] {\n    grid-template-columns: 1fr;\n  }\n  .tool-card[_ngcontent-%COMP%] {\n    max-width: 100%;\n  }\n}\n/*# sourceMappingURL=home.component.css.map */"] });
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(HomeComponent, { className: "HomeComponent", filePath: "src/app/home/home.component.ts", lineNumber: 13 });
@@ -60402,6 +60420,23 @@ var ZipUrlComponent = class _ZipUrlComponent {
 };
 (() => {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipUrlComponent, { className: "ZipUrlComponent", filePath: "src/app/zip-url/zip-url.component.ts", lineNumber: 41 });
+})();
+
+// src/app/zip-file/zip-file.component.ts
+var ZipFileComponent = class _ZipFileComponent {
+  static \u0275fac = function ZipFileComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _ZipFileComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipFileComponent, selectors: [["app-zip-file"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 2, vars: 0, template: function ZipFileComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "p");
+      \u0275\u0275text(1, "Zip Transfer \u2013 Coming Soon \u{1F680}");
+      \u0275\u0275elementEnd();
+    }
+  } });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipFileComponent, { className: "ZipFileComponent", filePath: "src/app/zip-file/zip-file.component.ts", lineNumber: 11 });
 })();
 
 // node_modules/angularx-qrcode/fesm2022/angularx-qrcode.mjs
@@ -87361,6 +87396,10 @@ var routes = [
       pageDescription: PAGE_DESCRIPTION.ZIP_QR,
       canonical: "/qr"
     }
+  },
+  {
+    path: "file",
+    component: ZipFileComponent
   },
   {
     path: "t/:id",
