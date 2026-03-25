@@ -16098,6 +16098,9 @@ textarea {
   scrollbar-width: thin;
   scrollbar-color: var(--primary) #f1f1f1;
 }
+[data-theme=dark] select option {
+  background-color: var(--card-bg);
+}
 
 /* src/fonts.css */
 @font-face {
