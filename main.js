@@ -52749,6 +52749,7 @@ var GraphQL = {
       $customSlug: String
       $isIpRestricted: Boolean
       $isOneTimeView: Boolean
+      $pin: String
     ) {
       generateZipTextUrl(
         text: $text
@@ -52756,14 +52757,16 @@ var GraphQL = {
         customSlug: $customSlug
         isIpRestricted: $isIpRestricted
         isOneTimeView: $isOneTimeView
+        pin: $pin
       )
     }
   `,
   getZipText: gql2`
-    query GetZipText($url: String!) {
-      getZipText(url: $url) {
+    query GetZipText($url: String!, $pin: String) {
+      getZipText(url: $url, pin: $pin) {
         text
         isOneTimeView
+        hasPin
       }
     }
   `,
@@ -52803,6 +52806,7 @@ var CommonService = class _CommonService {
   platformId = inject(PLATFORM_ID);
   tempText = "";
   tempIsOneTimeView = false;
+  tempHasPin = false;
   isFromBackend = false;
   setTempText(text) {
     this.tempText = text;
@@ -52816,6 +52820,12 @@ var CommonService = class _CommonService {
   getTempIsOneTimeView() {
     return this.tempIsOneTimeView;
   }
+  setTempHasPin(hasPin) {
+    this.tempHasPin = hasPin;
+  }
+  getTempHasPin() {
+    return this.tempHasPin;
+  }
   setIsFromBackend(value) {
     this.isFromBackend = value;
   }
@@ -52825,6 +52835,7 @@ var CommonService = class _CommonService {
   clearTempText() {
     this.tempText = "";
     this.tempIsOneTimeView = false;
+    this.tempHasPin = false;
     this.isFromBackend = false;
   }
   healthCheck() {
@@ -52833,14 +52844,14 @@ var CommonService = class _CommonService {
       fetchPolicy: "no-cache"
     });
   }
-  getZipText(id) {
+  getZipText(id, pin) {
     return this.apollo.query({
       query: GraphQL.getZipText,
-      variables: { url: id },
+      variables: { url: id, pin },
       fetchPolicy: "no-cache"
     });
   }
-  generateZipTextUrl(text, expiryInMinutes, customSlug, isIpRestricted, isOneTimeView) {
+  generateZipTextUrl(text, expiryInMinutes, customSlug, isIpRestricted, isOneTimeView, pin) {
     const MUTATION = GraphQL.generateZipTextUrl;
     return this.apollo.mutate({
       mutation: MUTATION,
@@ -52849,7 +52860,8 @@ var CommonService = class _CommonService {
         expiryInMinutes,
         customSlug,
         isIpRestricted,
-        isOneTimeView
+        isOneTimeView,
+        pin
       }
     });
   }
@@ -59454,6 +59466,34 @@ var ZIP_TEXT_FAQ = [
   {
     question: "Can I download a QR code for my shared text?",
     answer: 'Yes. Once your text link is generated, you can click "Download QR" to get a QR code image. This QR code can be printed or shared to let others scan and access your text.'
+  },
+  {
+    question: "What is PIN protection for text links?",
+    answer: "PIN protection adds an extra layer of security to your shared text. When enabled, the recipient must enter a PIN code to view the text content."
+  },
+  {
+    question: "How does PIN protection work?",
+    answer: "When you create a text link with PIN protection, the recipient will be prompted to enter a PIN before they can view the text. Without the correct PIN, the text remains hidden."
+  },
+  {
+    question: "How do I share the PIN with the recipient?",
+    answer: "You need to share the PIN separately with your recipient through a different channel (e.g., phone call, message, email). The link and PIN should not be sent together for better security."
+  },
+  {
+    question: "Can I combine PIN protection with other features?",
+    answer: "Yes. PIN protection can be combined with one-time view and IP restriction features for enhanced security. You can enable multiple protection options when creating a link."
+  },
+  {
+    question: "Can I delete a text link after creating it?",
+    answer: "Yes. As the creator of the text link, you can delete it at any time from the viewer page. Once deleted, the link becomes invalid and the text cannot be accessed."
+  },
+  {
+    question: "What happens when I delete a text link?",
+    answer: "When you delete a text link, the text is permanently removed from the server and the link becomes invalid. Neither you nor anyone else will be able to access it again."
+  },
+  {
+    question: "Where can I find the delete option for my text link?",
+    answer: 'The delete option appears on the text viewer page immediately after you create the link. Look for the "Changed your mind?" section below the share card.'
   }
 ];
 var ZIP_URL_FAQ = [
@@ -59869,10 +59909,161 @@ var CustomLinkComponent = class _CustomLinkComponent {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(CustomLinkComponent, { className: "CustomLinkComponent", filePath: "src/app/shared/components/custom-link/custom-link.component.ts", lineNumber: 17 });
 })();
 
+// src/app/shared/components/pin-toggle/pin-toggle.component.ts
+var PinToggleComponent = class _PinToggleComponent {
+  pinEnabled = false;
+  pinValue = "";
+  pinError = "";
+  onChange = () => {
+  };
+  onTouched = () => {
+  };
+  writeValue(value) {
+    this.pinValue = value || "";
+    this.pinEnabled = !!value;
+  }
+  registerOnChange(fn) {
+    this.onChange = fn;
+  }
+  registerOnTouched(fn) {
+    this.onTouched = fn;
+  }
+  onPinToggleClick(event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.pinEnabled = !this.pinEnabled;
+    if (!this.pinEnabled) {
+      this.pinValue = "";
+      this.pinError = "";
+      this.onChange("");
+    } else {
+      setTimeout(() => {
+        const input2 = document.getElementById("pinInput");
+        if (input2) {
+          input2.focus();
+        }
+      }, 320);
+    }
+    this.onTouched();
+  }
+  onPinInputChange() {
+    const cleaned = this.pinValue.replace(/\D/g, "");
+    if (this.pinValue !== cleaned) {
+      this.pinValue = cleaned;
+      const input2 = document.getElementById("pinInput");
+      if (input2) {
+        input2.value = cleaned;
+      }
+    }
+    this.clearPinError();
+    this.onChange(this.pinValue);
+  }
+  onKeyDown(event) {
+    if (event.key !== "Backspace" && event.key !== "Tab" && event.key !== "ArrowLeft" && event.key !== "ArrowRight" && event.key !== "Delete" && event.key !== "Enter" && event.ctrlKey === false && event.metaKey === false) {
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        event.preventDefault();
+      }
+    }
+  }
+  validatePin() {
+    if (!this.pinEnabled) {
+      return null;
+    }
+    if (this.pinValue === "") {
+      return "PIN is required";
+    }
+    if (this.pinValue.length < 4) {
+      return "At least 4 digits required";
+    }
+    return null;
+  }
+  isValid() {
+    const error = this.validatePin();
+    return error === null;
+  }
+  clearPinError() {
+    this.pinError = "";
+  }
+  showPinError(text) {
+    this.pinError = text;
+  }
+  static \u0275fac = function PinToggleComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _PinToggleComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PinToggleComponent, selectors: [["app-pin-toggle"]], hostBindings: function PinToggleComponent_HostBindings(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275listener("click", function PinToggleComponent_click_HostBindingHandler() {
+        return ctx.onPinToggleClick();
+      });
+    }
+  }, standalone: true, features: [\u0275\u0275ProvidersFeature([
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => _PinToggleComponent),
+      multi: true
+    }
+  ]), \u0275\u0275StandaloneFeature], decls: 17, vars: 12, consts: [[1, "pin-option-wrapper"], [1, "pin-toggle-row", 3, "click"], [1, "pin-toggle-content"], [1, "pin-toggle-label"], [1, "pin-toggle-sub"], [1, "pin-switch"], [1, "pin-switch-knob"], [1, "pin-input-wrap"], ["for", "pinInput", 1, "pin-input-label"], ["type", "text", "id", "pinInput", "placeholder", "_ _ _ _", "maxlength", "6", "inputmode", "numeric", "autocomplete", "off", 1, "pin-input", 3, "ngModelChange", "input", "keydown", "ngModel"], [1, "pin-error-msg"], [1, "pin-hint"]], template: function PinToggleComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275elementStart(0, "div", 0)(1, "div", 1);
+      \u0275\u0275listener("click", function PinToggleComponent_Template_div_click_1_listener($event) {
+        return ctx.onPinToggleClick($event);
+      });
+      \u0275\u0275elementStart(2, "div", 2)(3, "span", 3);
+      \u0275\u0275text(4, "PIN Protection");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(5, "span", 4);
+      \u0275\u0275text(6, "Require a code to view");
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(7, "div", 5);
+      \u0275\u0275element(8, "div", 6);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275elementStart(9, "div", 7)(10, "label", 8);
+      \u0275\u0275text(11, "Enter PIN");
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(12, "input", 9);
+      \u0275\u0275twoWayListener("ngModelChange", function PinToggleComponent_Template_input_ngModelChange_12_listener($event) {
+        \u0275\u0275twoWayBindingSet(ctx.pinValue, $event) || (ctx.pinValue = $event);
+        return $event;
+      });
+      \u0275\u0275listener("input", function PinToggleComponent_Template_input_input_12_listener() {
+        return ctx.onPinInputChange();
+      })("keydown", function PinToggleComponent_Template_input_keydown_12_listener($event) {
+        return ctx.onKeyDown($event);
+      });
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(13, "div", 10);
+      \u0275\u0275text(14);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(15, "div", 11);
+      \u0275\u0275text(16, " 4\u20136 digits only. You'll need to share this separately. ");
+      \u0275\u0275elementEnd()()();
+    }
+    if (rf & 2) {
+      \u0275\u0275advance();
+      \u0275\u0275classProp("pin-on", ctx.pinEnabled);
+      \u0275\u0275advance(6);
+      \u0275\u0275classProp("on", ctx.pinEnabled);
+      \u0275\u0275advance(2);
+      \u0275\u0275classProp("open", ctx.pinEnabled);
+      \u0275\u0275advance(3);
+      \u0275\u0275classProp("pin-error", ctx.pinError);
+      \u0275\u0275twoWayProperty("ngModel", ctx.pinValue);
+      \u0275\u0275advance();
+      \u0275\u0275classProp("visible", ctx.pinError);
+      \u0275\u0275advance();
+      \u0275\u0275textInterpolate(ctx.pinError);
+    }
+  }, dependencies: [CommonModule, FormsModule, DefaultValueAccessor, NgControlStatus, MaxLengthValidator, NgModel], styles: ['\n\n.pin-option-wrapper[_ngcontent-%COMP%] {\n  background: rgba(102, 126, 234, 0.1);\n  border: 1px solid rgba(102, 126, 234, 0.3);\n  border-radius: 8px;\n  transition: all 0.2s;\n  overflow: hidden;\n}\n.pin-option-wrapper[_ngcontent-%COMP%]:hover {\n  background: rgba(102, 126, 234, 0.15);\n  border-color: rgba(102, 126, 234, 0.5);\n}\n.pin-toggle-row[_ngcontent-%COMP%] {\n  background: transparent;\n  border: none;\n  border-radius: 0;\n  padding: 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  cursor: pointer;\n  transition: all 0.2s;\n  -webkit-user-select: none;\n  user-select: none;\n  box-sizing: border-box;\n}\n.pin-toggle-content[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  align-items: flex-start;\n}\n.pin-toggle-label[_ngcontent-%COMP%] {\n  font-size: 15px;\n  color: var(--text);\n  font-weight: 500;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.pin-toggle-sub[_ngcontent-%COMP%] {\n  font-size: 12px;\n  color: var(--additional-option-text);\n}\n.pin-switch[_ngcontent-%COMP%] {\n  width: 40px;\n  height: 22px;\n  background: var(--additional-option-text);\n  border-radius: 11px;\n  position: relative;\n  flex-shrink: 0;\n  transition: background 0.2s;\n}\n.pin-switch.on[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n}\n.pin-switch-knob[_ngcontent-%COMP%] {\n  width: 16px;\n  height: 16px;\n  background: white;\n  border-radius: 50%;\n  position: absolute;\n  top: 3px;\n  left: 3px;\n  transition: left 0.2s;\n}\n.pin-switch.on[_ngcontent-%COMP%]   .pin-switch-knob[_ngcontent-%COMP%] {\n  left: 21px;\n}\n.pin-input-wrap[_ngcontent-%COMP%] {\n  background: transparent;\n  border: none;\n  padding: 0;\n  max-height: 0;\n  overflow: hidden;\n  transition: max-height 0.3s ease, padding 0.3s ease;\n  box-sizing: border-box;\n}\n.pin-input-wrap.open[_ngcontent-%COMP%] {\n  max-height: 150px;\n  padding: 0 16px 16px 16px;\n}\n.pin-input-label[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--additional-option-text);\n  font-weight: 500;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  margin-bottom: 7px;\n  display: block;\n}\n.pin-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 10px 14px;\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 7px;\n  color: var(--text);\n  font-size: 18px;\n  font-family: "Courier New", monospace;\n  letter-spacing: 0.25em;\n  transition: border-color 0.2s;\n  box-sizing: border-box;\n}\n.pin-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #667eea;\n}\n.pin-input[_ngcontent-%COMP%]::placeholder {\n  color: var(--additional-option-text);\n  letter-spacing: 0.25em;\n  opacity: 0.5;\n}\n.pin-input.pin-error[_ngcontent-%COMP%] {\n  border-color: #f56565;\n  animation: _ngcontent-%COMP%_shake 0.35s ease;\n}\n.pin-error-msg[_ngcontent-%COMP%] {\n  font-size: 12px;\n  color: #f56565;\n  margin-top: 5px;\n  display: none;\n}\n.pin-error-msg.visible[_ngcontent-%COMP%] {\n  display: block;\n}\n.pin-hint[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--additional-option-text);\n  margin-top: 5px;\n  font-style: italic;\n  opacity: 0.7;\n}\n@keyframes _ngcontent-%COMP%_shake {\n  0%, 100% {\n    transform: translateX(0);\n  }\n  20% {\n    transform: translateX(-5px);\n  }\n  40% {\n    transform: translateX(5px);\n  }\n  60% {\n    transform: translateX(-4px);\n  }\n  80% {\n    transform: translateX(4px);\n  }\n}\n/*# sourceMappingURL=pin-toggle.component.css.map */'] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PinToggleComponent, { className: "PinToggleComponent", filePath: "src/app/shared/components/pin-toggle/pin-toggle.component.ts", lineNumber: 23 });
+})();
+
 // src/app/zip-text/zip-text.component.ts
 function ZipTextComponent_option_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "option", 33);
+    \u0275\u0275elementStart(0, "option", 34);
     \u0275\u0275text(1);
     \u0275\u0275elementEnd();
   }
@@ -59883,20 +60074,20 @@ function ZipTextComponent_option_8_Template(rf, ctx) {
     \u0275\u0275textInterpolate1(" ", expiryTime_r2.text, " ");
   }
 }
-function ZipTextComponent_app_loader_overlay_42_Template(rf, ctx) {
+function ZipTextComponent_app_loader_overlay_44_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275element(0, "app-loader-overlay", 34);
+    \u0275\u0275element(0, "app-loader-overlay", 35);
   }
   if (rf & 2) {
     \u0275\u0275property("message", "Generating link...");
   }
 }
-function ZipTextComponent_div_46_Template(rf, ctx) {
+function ZipTextComponent_div_48_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 35);
+    \u0275\u0275elementStart(0, "div", 36);
     \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(1, "svg", 36);
-    \u0275\u0275element(2, "path", 37)(3, "polyline", 38);
+    \u0275\u0275elementStart(1, "svg", 37);
+    \u0275\u0275element(2, "path", 38)(3, "polyline", 39);
     \u0275\u0275elementEnd();
     \u0275\u0275namespaceHTML();
     \u0275\u0275elementStart(4, "span");
@@ -59911,6 +60102,7 @@ var ZipTextComponent = class _ZipTextComponent {
   seoSchemaService = inject(SeoSchemaService);
   platformId = inject(PLATFORM_ID);
   customLinkComponent;
+  pinToggleComponent;
   expiryTimes = [
     { text: "10 min", value: 10 },
     { text: "30 min", value: 30 },
@@ -59975,10 +60167,12 @@ var ZipTextComponent = class _ZipTextComponent {
       this.commonService.setTempIsOneTimeView(this.isOneTimeView);
       this.commonService.setIsFromBackend(false);
       const expiry = this.expiryInMinutes ? parseInt(this.expiryInMinutes.toString(), 10) : null;
-      this.commonService.generateZipTextUrl(this.textInput, expiry, this.customSlug, this.isIpRestricted, this.isOneTimeView).subscribe({
+      this.commonService.generateZipTextUrl(this.textInput, expiry, this.customSlug, this.isIpRestricted, this.isOneTimeView, this.pinToggleComponent?.pinValue || null).subscribe({
         next: (response) => {
           const id = response.data?.generateZipTextUrl;
           if (id) {
+            const hasPin = !!this.pinToggleComponent?.pinValue;
+            this.commonService.setTempHasPin(hasPin);
             setTimeout(() => {
               this.loading = false;
               this.router.navigate(["/t", id]);
@@ -60016,33 +60210,35 @@ var ZipTextComponent = class _ZipTextComponent {
   static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextComponent, selectors: [["app-zip-text"]], viewQuery: function ZipTextComponent_Query(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275viewQuery(CustomLinkComponent, 5);
+      \u0275\u0275viewQuery(PinToggleComponent, 5);
     }
     if (rf & 2) {
       let _t;
       \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.customLinkComponent = _t.first);
+      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.pinToggleComponent = _t.first);
     }
-  }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 47, vars: 13, consts: [["customLink", ""], ["botGuard", ""], [1, "main-content-text"], ["rows", "8", "placeholder", "Paste your text here...", 1, "textInput", 3, "ngModelChange", "ngModel"], [1, "controls"], [1, "control-row"], [1, "control-group"], ["for", "expiry-select"], ["id", "expiry-select", 3, "ngModelChange", "ngModel"], [3, "value", 4, "ngFor", "ngForOf"], [3, "availabilityChange", "slugChange"], ["id", "additionalOptionsWrapper", 1, "additional-options-wrapper"], ["type", "button", 1, "additional-options-toggle", 3, "click"], ["width", "16", "height", "16", "viewBox", "0 0 20 20", "fill", "none", 1, "toggle-chevron"], ["d", "M5 7.5L10 12.5L15 7.5", "stroke", "currentColor", "stroke-width", "2", "stroke-linecap", "round", "stroke-linejoin", "round"], ["id", "additionalOptions", 1, "additional-options-content"], [1, "security-option"], [1, "checkbox-label"], ["type", "checkbox", "id", "ipRestrict", 1, "checkbox-input", 3, "ngModelChange", "ngModel"], [1, "checkbox-custom"], [1, "checkbox-text"], [1, "feature-badge"], [1, "one-time-option"], ["type", "checkbox", "id", "oneTimeView", 1, "checkbox-input", 3, "ngModelChange", "ngModel"], [1, "one-time-text-wrapper"], [1, "one-time-text"], [1, "expiry-icon"], [1, "feature-subtitle"], [1, "generate-button", 3, "click", "disabled"], [3, "message", 4, "ngIf"], [1, "footer-note"], [3, "items"], ["class", "snackbar", 4, "ngIf"], [3, "value"], [3, "message"], [1, "snackbar"], ["width", "18", "height", "18", "viewBox", "0 0 24 24", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], ["d", "M22 11.08V12a10 10 0 1 1-5.93-9.14"], ["points", "22 4 12 14.01 9 11.01"]], template: function ZipTextComponent_Template(rf, ctx) {
+  }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 49, vars: 13, consts: [["customLink", ""], ["pinToggle", ""], ["botGuard", ""], [1, "main-content-text"], ["rows", "8", "placeholder", "Paste your text here...", 1, "textInput", 3, "ngModelChange", "ngModel"], [1, "controls"], [1, "control-row"], [1, "control-group"], ["for", "expiry-select"], ["id", "expiry-select", 3, "ngModelChange", "ngModel"], [3, "value", 4, "ngFor", "ngForOf"], [3, "availabilityChange", "slugChange"], ["id", "additionalOptionsWrapper", 1, "additional-options-wrapper"], ["type", "button", 1, "additional-options-toggle", 3, "click"], ["width", "16", "height", "16", "viewBox", "0 0 20 20", "fill", "none", 1, "toggle-chevron"], ["d", "M5 7.5L10 12.5L15 7.5", "stroke", "currentColor", "stroke-width", "2", "stroke-linecap", "round", "stroke-linejoin", "round"], ["id", "additionalOptions", 1, "additional-options-content"], [1, "security-option"], [1, "checkbox-label"], ["type", "checkbox", "id", "ipRestrict", 1, "checkbox-input", 3, "ngModelChange", "ngModel"], [1, "checkbox-custom"], [1, "checkbox-text"], [1, "feature-badge"], [1, "one-time-option"], ["type", "checkbox", "id", "oneTimeView", 1, "checkbox-input", 3, "ngModelChange", "ngModel"], [1, "one-time-text-wrapper"], [1, "one-time-text"], [1, "expiry-icon"], [1, "feature-subtitle"], [1, "generate-button", 3, "click", "disabled"], [3, "message", 4, "ngIf"], [1, "footer-note"], [3, "items"], ["class", "snackbar", 4, "ngIf"], [3, "value"], [3, "message"], [1, "snackbar"], ["width", "18", "height", "18", "viewBox", "0 0 24 24", "fill", "none", "stroke", "currentColor", "stroke-width", "2"], ["d", "M22 11.08V12a10 10 0 1 1-5.93-9.14"], ["points", "22 4 12 14.01 9 11.01"]], template: function ZipTextComponent_Template(rf, ctx) {
     if (rf & 1) {
       const _r1 = \u0275\u0275getCurrentView();
-      \u0275\u0275elementStart(0, "div", 2)(1, "textarea", 3);
+      \u0275\u0275elementStart(0, "div", 3)(1, "textarea", 4);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_textarea_ngModelChange_1_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.textInput, $event) || (ctx.textInput = $event);
         return \u0275\u0275resetView($event);
       });
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(2, "div", 4)(3, "div", 5)(4, "div", 6)(5, "label", 7);
+      \u0275\u0275elementStart(2, "div", 5)(3, "div", 6)(4, "div", 7)(5, "label", 8);
       \u0275\u0275text(6, "Expiry Time");
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(7, "select", 8);
+      \u0275\u0275elementStart(7, "select", 9);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_select_ngModelChange_7_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.expiryInMinutes, $event) || (ctx.expiryInMinutes = $event);
         return \u0275\u0275resetView($event);
       });
-      \u0275\u0275template(8, ZipTextComponent_option_8_Template, 2, 2, "option", 9);
+      \u0275\u0275template(8, ZipTextComponent_option_8_Template, 2, 2, "option", 10);
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(9, "div", 6)(10, "app-custom-link", 10, 0);
+      \u0275\u0275elementStart(9, "div", 7)(10, "app-custom-link", 11, 0);
       \u0275\u0275listener("availabilityChange", function ZipTextComponent_Template_app_custom_link_availabilityChange_10_listener($event) {
         \u0275\u0275restoreView(_r1);
         return \u0275\u0275resetView(ctx.onSlugAvailabilityChange($event));
@@ -60051,7 +60247,7 @@ var ZipTextComponent = class _ZipTextComponent {
         return \u0275\u0275resetView(ctx.onSlugChange($event));
       });
       \u0275\u0275elementEnd()()();
-      \u0275\u0275elementStart(12, "div", 11)(13, "button", 12);
+      \u0275\u0275elementStart(12, "div", 12)(13, "button", 13);
       \u0275\u0275listener("click", function ZipTextComponent_Template_button_click_13_listener() {
         \u0275\u0275restoreView(_r1);
         return \u0275\u0275resetView(ctx.toggleAdditionalOptions());
@@ -60060,54 +60256,56 @@ var ZipTextComponent = class _ZipTextComponent {
       \u0275\u0275text(15, "Additional Options");
       \u0275\u0275elementEnd();
       \u0275\u0275namespaceSVG();
-      \u0275\u0275elementStart(16, "svg", 13);
-      \u0275\u0275element(17, "path", 14);
+      \u0275\u0275elementStart(16, "svg", 14);
+      \u0275\u0275element(17, "path", 15);
       \u0275\u0275elementEnd()();
       \u0275\u0275namespaceHTML();
-      \u0275\u0275elementStart(18, "div", 15)(19, "div", 16)(20, "label", 17)(21, "input", 18);
+      \u0275\u0275elementStart(18, "div", 16)(19, "div", 17)(20, "label", 18)(21, "input", 19);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_input_ngModelChange_21_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.isIpRestricted, $event) || (ctx.isIpRestricted = $event);
         return \u0275\u0275resetView($event);
       });
       \u0275\u0275elementEnd();
-      \u0275\u0275element(22, "span", 19);
-      \u0275\u0275elementStart(23, "span", 20);
+      \u0275\u0275element(22, "span", 20);
+      \u0275\u0275elementStart(23, "span", 21);
       \u0275\u0275text(24, " Share only within this network (Wi-Fi/VPN) ");
-      \u0275\u0275elementStart(25, "span", 21);
+      \u0275\u0275elementStart(25, "span", 22);
       \u0275\u0275text(26, "\u{1F512} Secure");
       \u0275\u0275elementEnd()()()();
-      \u0275\u0275elementStart(27, "div", 22)(28, "label", 17)(29, "input", 23);
+      \u0275\u0275elementStart(27, "div", 23)(28, "label", 18)(29, "input", 24);
       \u0275\u0275twoWayListener("ngModelChange", function ZipTextComponent_Template_input_ngModelChange_29_listener($event) {
         \u0275\u0275restoreView(_r1);
         \u0275\u0275twoWayBindingSet(ctx.isOneTimeView, $event) || (ctx.isOneTimeView = $event);
         return \u0275\u0275resetView($event);
       });
       \u0275\u0275elementEnd();
-      \u0275\u0275element(30, "span", 19);
-      \u0275\u0275elementStart(31, "div", 24)(32, "span", 25);
+      \u0275\u0275element(30, "span", 20);
+      \u0275\u0275elementStart(31, "div", 25)(32, "span", 26);
       \u0275\u0275text(33, " One-time access ");
-      \u0275\u0275elementStart(34, "span", 26);
+      \u0275\u0275elementStart(34, "span", 27);
       \u0275\u0275text(35, "\u{1F552}");
       \u0275\u0275elementEnd()();
-      \u0275\u0275elementStart(36, "span", 27);
+      \u0275\u0275elementStart(36, "span", 28);
       \u0275\u0275text(37, "Permanently deleted after first open");
-      \u0275\u0275elementEnd()()()()()();
-      \u0275\u0275element(38, "app-bot-guard", null, 1);
-      \u0275\u0275elementStart(40, "button", 28);
-      \u0275\u0275listener("click", function ZipTextComponent_Template_button_click_40_listener() {
+      \u0275\u0275elementEnd()()()();
+      \u0275\u0275element(38, "app-pin-toggle", null, 1);
+      \u0275\u0275elementEnd()();
+      \u0275\u0275element(40, "app-bot-guard", null, 2);
+      \u0275\u0275elementStart(42, "button", 29);
+      \u0275\u0275listener("click", function ZipTextComponent_Template_button_click_42_listener() {
         \u0275\u0275restoreView(_r1);
-        const botGuard_r3 = \u0275\u0275reference(39);
+        const botGuard_r3 = \u0275\u0275reference(41);
         return \u0275\u0275resetView(ctx.generateLink(botGuard_r3));
       });
-      \u0275\u0275text(41, " Generate Link ");
+      \u0275\u0275text(43, " Generate Link ");
       \u0275\u0275elementEnd()();
-      \u0275\u0275template(42, ZipTextComponent_app_loader_overlay_42_Template, 1, 1, "app-loader-overlay", 29);
-      \u0275\u0275elementStart(43, "p", 30);
-      \u0275\u0275text(44, " Note - We encrypt every message before storing it, ensuring complete privacy. No one can access your text, and it\u2019s permanently removed once the expiry time is reached. ");
+      \u0275\u0275template(44, ZipTextComponent_app_loader_overlay_44_Template, 1, 1, "app-loader-overlay", 30);
+      \u0275\u0275elementStart(45, "p", 31);
+      \u0275\u0275text(46, " Note - We encrypt every message before storing it, ensuring complete privacy. No one can access your text, and it\u2019s permanently removed once the expiry time is reached. ");
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(45, "app-faq", 31);
-      \u0275\u0275template(46, ZipTextComponent_div_46_Template, 6, 0, "div", 32);
+      \u0275\u0275element(47, "app-faq", 32);
+      \u0275\u0275template(48, ZipTextComponent_div_48_Template, 6, 0, "div", 33);
     }
     if (rf & 2) {
       \u0275\u0275classProp("fade-out", ctx.loading);
@@ -60123,7 +60321,7 @@ var ZipTextComponent = class _ZipTextComponent {
       \u0275\u0275twoWayProperty("ngModel", ctx.isIpRestricted);
       \u0275\u0275advance(8);
       \u0275\u0275twoWayProperty("ngModel", ctx.isOneTimeView);
-      \u0275\u0275advance(11);
+      \u0275\u0275advance(13);
       \u0275\u0275property("disabled", !ctx.textInput.trim() || ctx.isSlugAvailable === false);
       \u0275\u0275advance(2);
       \u0275\u0275property("ngIf", ctx.loading);
@@ -60147,11 +60345,12 @@ var ZipTextComponent = class _ZipTextComponent {
     LoaderOverlayComponent,
     BotGuardComponent,
     FaqComponent,
-    CustomLinkComponent
-  ], styles: ['\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n  box-sizing: border-box;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\n.textInput[_ngcontent-%COMP%]:focus {\n  outline: 3px solid #667eea;\n}\n.generate-button[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  font-weight: 600;\n  transition: transform 0.2s, box-shadow 0.2s;\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n}\n.generate-button[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);\n}\n.generate-button[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.controls[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.control-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 20px;\n  align-items: flex-start;\n}\n.control-group[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n}\n.control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  color: var(--primary);\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: flex;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  cursor: pointer;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 15px;\n  background: transparent;\n  color: var(--text);\n  font-family: inherit;\n  transition: all 0.2s;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #667eea;\n  background: transparent;\n}\n.dropdown-group[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.dropdown-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  color: var(--primary);\n  white-space: nowrap;\n}\n.dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  padding: 0.5rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  border: 1px solid #ccc;\n  background: white;\n  color: #333;\n}\n.main-content-text[_ngcontent-%COMP%] {\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-text.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.footer-note[_ngcontent-%COMP%] {\n  font-size: 13px;\n  text-align: center;\n  margin-top: 24px;\n  line-height: 1.6;\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .button-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 0.75rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%] {\n    width: 100%;\n    justify-content: space-between;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    flex: 1;\n    max-width: 60%;\n  }\n  .generate-button[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    max-width: 100%;\n    font-size: 13px;\n    margin: 0.75rem;\n    padding: 0 1rem;\n    text-align: center;\n  }\n}\n@media (max-width: 768px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 1rem;\n    border-radius: 0.75rem;\n  }\n  .control-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n  }\n  textarea[_ngcontent-%COMP%], \n   input[type=text][_ngcontent-%COMP%], \n   select[_ngcontent-%COMP%] {\n    width: 100%;\n    box-sizing: border-box;\n  }\n  textarea.textInput[_ngcontent-%COMP%] {\n    rows: 6;\n    min-height: 120px;\n    padding: 0.75rem;\n    font-size: 16px;\n  }\n  .generate-button[_ngcontent-%COMP%] {\n    width: 100%;\n    padding: 14px 16px;\n    font-size: 1rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%], \n   .control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    width: 100%;\n    max-width: 100% !important;\n  }\n  .controls[_ngcontent-%COMP%] {\n    gap: 16px;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    font-size: 12px;\n    margin-top: 16px;\n    padding: 0 0.25rem;\n  }\n}\n@media (max-width: 480px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 0.75rem;\n  }\n  .main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n    font-size: 1.1rem;\n    margin-bottom: 0.75rem;\n  }\n  .control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n    font-size: 12px;\n  }\n}\n.additional-options-wrapper[_ngcontent-%COMP%] {\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  overflow: hidden;\n  transition: all 0.3s ease;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%] {\n  border-color: #667eea;\n}\n.additional-options-toggle[_ngcontent-%COMP%] {\n  width: 100%;\n  background: transparent;\n  border: none;\n  padding: 14px 16px;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  cursor: pointer;\n  color: var(--additional-option-text);\n  font-size: 14px;\n  font-weight: 500;\n  font-family: inherit;\n  transition: all 0.2s;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.additional-options-toggle[_ngcontent-%COMP%]:hover {\n  color: #667eea;\n  background: rgba(102, 126, 234, 0.05);\n}\n.toggle-chevron[_ngcontent-%COMP%] {\n  transition: transform 0.3s ease;\n  color: #a0aec0;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%]   .toggle-chevron[_ngcontent-%COMP%] {\n  transform: rotate(180deg);\n  color: #667eea;\n}\n.additional-options-content[_ngcontent-%COMP%] {\n  max-height: 0;\n  overflow: hidden;\n  transition: max-height 0.3s ease, padding 0.3s ease;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%]   .additional-options-content[_ngcontent-%COMP%] {\n  max-height: 300px;\n  padding: 0 16px 16px 16px;\n}\n.security-option[_ngcontent-%COMP%], \n.one-time-option[_ngcontent-%COMP%] {\n  background: rgba(102, 126, 234, 0.1);\n  border: 1px solid rgba(102, 126, 234, 0.3);\n  border-radius: 8px;\n  padding: 16px;\n}\n.one-time-option[_ngcontent-%COMP%] {\n  margin-top: 12px;\n}\n.checkbox-label[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  cursor: pointer;\n  -webkit-user-select: none;\n  user-select: none;\n  position: relative;\n}\n.checkbox-input[_ngcontent-%COMP%] {\n  position: absolute;\n  opacity: 0;\n  cursor: pointer;\n}\n.checkbox-custom[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  border: 1px solid #667eea;\n  border-radius: 4px;\n  background: var(--checkbox-bg-color);\n  position: relative;\n  transition: all 0.2s;\n  flex-shrink: 0;\n}\n.checkbox-input[_ngcontent-%COMP%]:checked    + .checkbox-custom[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  border-color: #667eea;\n}\n.checkbox-input[_ngcontent-%COMP%]:checked    + .checkbox-custom[_ngcontent-%COMP%]::after {\n  content: "\\2713";\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  color: white;\n  font-size: 14px;\n  font-weight: bold;\n}\n.checkbox-text[_ngcontent-%COMP%] {\n  color: var(--text);\n  font-size: 15px;\n  font-weight: 500;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.feature-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  background: rgba(102, 126, 234, 0.2);\n  color: var(--badge-text-color);\n  padding: 4px 10px;\n  border-radius: 12px;\n  font-size: 11px;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  margin-left: 8px;\n}\n.one-time-text-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  align-items: flex-start;\n}\n.one-time-option[_ngcontent-%COMP%]   .expiry-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  flex-shrink: 0;\n}\n.one-time-text[_ngcontent-%COMP%] {\n  color: var(--text);\n  font-size: 15px;\n  font-weight: 500;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: block;\n}\n.one-time-text[_ngcontent-%COMP%]   .expiry-icon[_ngcontent-%COMP%] {\n  margin-left: 8px;\n  font-size: 14px;\n}\n.feature-subtitle[_ngcontent-%COMP%] {\n  display: block;\n  font-size: 12px;\n  font-weight: 400;\n  color: var(--additional-option-text);\n  text-transform: none;\n  letter-spacing: 0;\n  margin-top: 2px;\n}\n.snackbar[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 2rem;\n  left: 50%;\n  transform: translateX(-50%);\n  background: #28a745;\n  color: #fff;\n  font-size: 14px;\n  padding: 12px 20px;\n  border-radius: 8px;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);\n  animation: _ngcontent-%COMP%_fadeInOut 2s forwards;\n  z-index: 9999;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n@keyframes _ngcontent-%COMP%_fadeInOut {\n  0% {\n    opacity: 0;\n    transform: translate(-50%, 10px);\n  }\n  10% {\n    opacity: 1;\n    transform: translate(-50%, 0);\n  }\n  90% {\n    opacity: 1;\n    transform: translate(-50%, 0);\n  }\n  100% {\n    opacity: 0;\n    transform: translate(-50%, 10px);\n  }\n}\n/*# sourceMappingURL=zip-text.component.css.map */'] });
+    CustomLinkComponent,
+    PinToggleComponent
+  ], styles: ['\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n  text-align: center;\n  margin-bottom: 1rem;\n  box-sizing: border-box;\n}\n.main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n  color: var(--primary);\n  margin-bottom: 1rem;\n}\ntextarea[_ngcontent-%COMP%], \ninput[type=text][_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ccc;\n  border-radius: 0.75rem;\n  font-size: 1rem;\n  margin-bottom: 1rem;\n  background: white;\n  color: #333;\n}\n.textInput[_ngcontent-%COMP%]:focus {\n  outline: 3px solid #667eea;\n}\n.generate-button[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  font-weight: 600;\n  transition: transform 0.2s, box-shadow 0.2s;\n  color: white;\n  border: none;\n  padding: 0.7rem 1.4rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  cursor: pointer;\n}\n.generate-button[_ngcontent-%COMP%]:hover {\n  transform: translateY(-2px);\n  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);\n}\n.generate-button[_ngcontent-%COMP%]:disabled {\n  background: #ccc;\n  color: #666;\n  cursor: not-allowed;\n  opacity: 0.7;\n  box-shadow: none;\n}\n.controls[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 20px;\n}\n.control-row[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 20px;\n  align-items: flex-start;\n}\n.control-group[_ngcontent-%COMP%] {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  width: 100%;\n}\n.control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  color: var(--primary);\n  font-size: 13px;\n  font-weight: 500;\n  margin-bottom: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: flex;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  cursor: pointer;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 15px;\n  background: transparent;\n  color: var(--text);\n  font-family: inherit;\n  transition: all 0.2s;\n}\n.control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: #667eea;\n  background: transparent;\n}\n.dropdown-group[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 0.5rem;\n  flex-shrink: 0;\n}\n.dropdown-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n  font-size: 1rem;\n  color: var(--primary);\n  white-space: nowrap;\n}\n.dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n  padding: 0.5rem;\n  font-size: 1rem;\n  border-radius: 0.5rem;\n  border: 1px solid #ccc;\n  background: white;\n  color: #333;\n}\n.main-content-text[_ngcontent-%COMP%] {\n  position: relative;\n  opacity: 1;\n  transition: opacity 0.3s ease;\n}\n.main-content-text.fade-out[_ngcontent-%COMP%] {\n  opacity: 0.4;\n}\n.footer-note[_ngcontent-%COMP%] {\n  font-size: 13px;\n  text-align: center;\n  margin-top: 24px;\n  line-height: 1.6;\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .button-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n    align-items: stretch;\n    gap: 0.75rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%] {\n    width: 100%;\n    justify-content: space-between;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    flex: 1;\n    max-width: 60%;\n  }\n  .generate-button[_ngcontent-%COMP%] {\n    width: 100%;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    max-width: 100%;\n    font-size: 13px;\n    margin: 0.75rem;\n    padding: 0 1rem;\n    text-align: center;\n  }\n}\n@media (max-width: 768px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 1rem;\n    border-radius: 0.75rem;\n  }\n  .control-row[_ngcontent-%COMP%] {\n    flex-direction: column;\n  }\n  textarea[_ngcontent-%COMP%], \n   input[type=text][_ngcontent-%COMP%], \n   select[_ngcontent-%COMP%] {\n    width: 100%;\n    box-sizing: border-box;\n  }\n  textarea.textInput[_ngcontent-%COMP%] {\n    rows: 6;\n    min-height: 120px;\n    padding: 0.75rem;\n    font-size: 16px;\n  }\n  .generate-button[_ngcontent-%COMP%] {\n    width: 100%;\n    padding: 14px 16px;\n    font-size: 1rem;\n  }\n  .dropdown-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%], \n   .control-group[_ngcontent-%COMP%]   select[_ngcontent-%COMP%] {\n    width: 100%;\n    max-width: 100% !important;\n  }\n  .controls[_ngcontent-%COMP%] {\n    gap: 16px;\n  }\n  .footer-note[_ngcontent-%COMP%] {\n    font-size: 12px;\n    margin-top: 16px;\n    padding: 0 0.25rem;\n  }\n}\n@media (max-width: 480px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    margin: 0.5rem;\n    padding: 0.75rem;\n  }\n  .main-content-text[_ngcontent-%COMP%]   h3[_ngcontent-%COMP%] {\n    font-size: 1.1rem;\n    margin-bottom: 0.75rem;\n  }\n  .control-group[_ngcontent-%COMP%]   label[_ngcontent-%COMP%] {\n    font-size: 12px;\n  }\n}\n.additional-options-wrapper[_ngcontent-%COMP%] {\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  overflow: hidden;\n  transition: all 0.3s ease;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%] {\n  border-color: #667eea;\n}\n.additional-options-toggle[_ngcontent-%COMP%] {\n  width: 100%;\n  background: transparent;\n  border: none;\n  padding: 14px 16px;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  cursor: pointer;\n  color: var(--additional-option-text);\n  font-size: 14px;\n  font-weight: 500;\n  font-family: inherit;\n  transition: all 0.2s;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.additional-options-toggle[_ngcontent-%COMP%]:hover {\n  color: #667eea;\n  background: rgba(102, 126, 234, 0.05);\n}\n.toggle-chevron[_ngcontent-%COMP%] {\n  transition: transform 0.3s ease;\n  color: #a0aec0;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%]   .toggle-chevron[_ngcontent-%COMP%] {\n  transform: rotate(180deg);\n  color: #667eea;\n}\n.additional-options-content[_ngcontent-%COMP%] {\n  max-height: 0;\n  overflow: hidden;\n  transition: max-height 0.3s ease, padding 0.3s ease;\n}\n.additional-options-wrapper.expanded[_ngcontent-%COMP%]   .additional-options-content[_ngcontent-%COMP%] {\n  max-height: 700px;\n  padding: 0 16px 16px 16px;\n}\n.security-option[_ngcontent-%COMP%], \n.one-time-option[_ngcontent-%COMP%] {\n  background: rgba(102, 126, 234, 0.1);\n  border: 1px solid rgba(102, 126, 234, 0.3);\n  border-radius: 8px;\n  padding: 16px;\n  transition: all 0.2s;\n}\n.security-option[_ngcontent-%COMP%]:hover, \n.one-time-option[_ngcontent-%COMP%]:hover {\n  background: rgba(102, 126, 234, 0.15);\n  border-color: rgba(102, 126, 234, 0.5);\n}\n.one-time-option[_ngcontent-%COMP%] {\n  margin-top: 12px;\n}\napp-pin-toggle[_ngcontent-%COMP%] {\n  display: block;\n  margin-top: 12px;\n}\n.one-time-option[_ngcontent-%COMP%] {\n  margin-top: 12px;\n}\n.checkbox-label[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: flex-start;\n  gap: 12px;\n  cursor: pointer;\n  -webkit-user-select: none;\n  user-select: none;\n  position: relative;\n}\n.checkbox-input[_ngcontent-%COMP%] {\n  position: absolute;\n  opacity: 0;\n  cursor: pointer;\n}\n.checkbox-custom[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  border: 1px solid #667eea;\n  border-radius: 4px;\n  background: var(--checkbox-bg-color);\n  position: relative;\n  transition: all 0.2s;\n  flex-shrink: 0;\n}\n.checkbox-input[_ngcontent-%COMP%]:checked    + .checkbox-custom[_ngcontent-%COMP%] {\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  border-color: #667eea;\n}\n.checkbox-input[_ngcontent-%COMP%]:checked    + .checkbox-custom[_ngcontent-%COMP%]::after {\n  content: "\\2713";\n  position: absolute;\n  top: 50%;\n  left: 50%;\n  transform: translate(-50%, -50%);\n  color: white;\n  font-size: 14px;\n  font-weight: bold;\n}\n.checkbox-text[_ngcontent-%COMP%] {\n  color: var(--text);\n  font-size: 15px;\n  font-weight: 500;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n}\n.feature-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 4px;\n  background: rgba(102, 126, 234, 0.2);\n  color: var(--badge-text-color);\n  padding: 4px 10px;\n  border-radius: 12px;\n  font-size: 11px;\n  font-weight: 600;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  margin-left: 8px;\n}\n.one-time-text-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  align-items: flex-start;\n}\n.one-time-option[_ngcontent-%COMP%]   .expiry-icon[_ngcontent-%COMP%] {\n  font-size: 18px;\n  flex-shrink: 0;\n}\n.one-time-text[_ngcontent-%COMP%] {\n  color: var(--text);\n  font-size: 15px;\n  font-weight: 500;\n  text-transform: uppercase;\n  letter-spacing: 0.5px;\n  display: block;\n}\n.one-time-text[_ngcontent-%COMP%]   .expiry-icon[_ngcontent-%COMP%] {\n  margin-left: 8px;\n  font-size: 14px;\n}\n.feature-subtitle[_ngcontent-%COMP%] {\n  display: block;\n  font-size: 12px;\n  font-weight: 400;\n  color: var(--additional-option-text);\n  text-transform: none;\n  letter-spacing: 0;\n  margin-top: 2px;\n}\n.snackbar[_ngcontent-%COMP%] {\n  position: fixed;\n  bottom: 2rem;\n  left: 50%;\n  transform: translateX(-50%);\n  background: #28a745;\n  color: #fff;\n  font-size: 14px;\n  padding: 12px 20px;\n  border-radius: 8px;\n  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);\n  animation: _ngcontent-%COMP%_fadeInOut 2s forwards;\n  z-index: 9999;\n  display: flex;\n  align-items: center;\n  gap: 8px;\n}\n@keyframes _ngcontent-%COMP%_fadeInOut {\n  0% {\n    opacity: 0;\n    transform: translate(-50%, 10px);\n  }\n  10% {\n    opacity: 1;\n    transform: translate(-50%, 0);\n  }\n  90% {\n    opacity: 1;\n    transform: translate(-50%, 0);\n  }\n  100% {\n    opacity: 0;\n    transform: translate(-50%, 10px);\n  }\n}\n/*# sourceMappingURL=zip-text.component.css.map */'] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src/app/zip-text/zip-text.component.ts", lineNumber: 39 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextComponent, { className: "ZipTextComponent", filePath: "src/app/zip-text/zip-text.component.ts", lineNumber: 41 });
 })();
 
 // node_modules/angularx-qrcode/fesm2022/angularx-qrcode.mjs
@@ -60639,11 +60838,262 @@ var ShareCardComponent = class _ShareCardComponent {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ShareCardComponent, { className: "ShareCardComponent", filePath: "src/app/shared/components/share-card/share-card.component.ts", lineNumber: 13 });
 })();
 
+// src/app/shared/components/pin-modal/pin-modal.component.ts
+var _c03 = ["pinInput"];
+function PinModalComponent_div_0_div_15_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 16);
+    \u0275\u0275text(1);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext(2);
+    \u0275\u0275advance();
+    \u0275\u0275textInterpolate1(" ", ctx_r1.localError || ctx_r1.pinError, " ");
+  }
+}
+function PinModalComponent_div_0_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 2);
+    \u0275\u0275listener("click", function PinModalComponent_div_0_Template_div_click_0_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onClose());
+    });
+    \u0275\u0275elementStart(1, "div", 3);
+    \u0275\u0275listener("click", function PinModalComponent_div_0_Template_div_click_1_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      return \u0275\u0275resetView($event.stopPropagation());
+    });
+    \u0275\u0275elementStart(2, "button", 4);
+    \u0275\u0275listener("click", function PinModalComponent_div_0_Template_button_click_2_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onClose());
+    });
+    \u0275\u0275text(3, "\u2715");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "div", 5);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(5, "svg", 6);
+    \u0275\u0275element(6, "rect", 7)(7, "path", 8);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(8, "h2");
+    \u0275\u0275text(9, "Enter PIN");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(10, "p", 9);
+    \u0275\u0275text(11, " This text is protected with a PIN. Please enter the PIN to view the content. ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(12, "div", 10)(13, "input", 11, 0);
+    \u0275\u0275twoWayListener("ngModelChange", function PinModalComponent_div_0_Template_input_ngModelChange_13_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      \u0275\u0275twoWayBindingSet(ctx_r1.enteredPin, $event) || (ctx_r1.enteredPin = $event);
+      return \u0275\u0275resetView($event);
+    });
+    \u0275\u0275listener("keyup", function PinModalComponent_div_0_Template_input_keyup_13_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onKeyUp($event));
+    });
+    \u0275\u0275elementEnd()();
+    \u0275\u0275template(15, PinModalComponent_div_0_div_15_Template, 2, 1, "div", 12);
+    \u0275\u0275elementStart(16, "div", 13)(17, "button", 14);
+    \u0275\u0275listener("click", function PinModalComponent_div_0_Template_button_click_17_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onClose());
+    });
+    \u0275\u0275text(18, "Cancel");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(19, "button", 15);
+    \u0275\u0275listener("click", function PinModalComponent_div_0_Template_button_click_19_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onSubmit());
+    });
+    \u0275\u0275text(20, "Submit");
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(13);
+    \u0275\u0275twoWayProperty("ngModel", ctx_r1.enteredPin);
+    \u0275\u0275advance(2);
+    \u0275\u0275property("ngIf", ctx_r1.localError || ctx_r1.pinError);
+  }
+}
+var PinModalComponent = class _PinModalComponent {
+  pinError = "";
+  close = new EventEmitter();
+  submit = new EventEmitter();
+  pinInput;
+  enteredPin = "";
+  localError = "";
+  shouldFocus = false;
+  _showPinModal = false;
+  get showPinModal() {
+    return this._showPinModal;
+  }
+  set showPinModal(value) {
+    this._showPinModal = value;
+    if (value) {
+      this.shouldFocus = true;
+    }
+  }
+  ngAfterViewChecked() {
+    if (this.shouldFocus && this.pinInput) {
+      this.pinInput.nativeElement.focus();
+      this.shouldFocus = false;
+    }
+  }
+  onClose() {
+    this.enteredPin = "";
+    this.localError = "";
+    this.close.emit();
+  }
+  onSubmit() {
+    if (!this.enteredPin.trim()) {
+      this.localError = "Please enter a PIN";
+      return;
+    }
+    this.localError = "";
+    this.submit.emit(this.enteredPin);
+  }
+  onKeyUp(event) {
+    if (event.key === "Enter") {
+      this.onSubmit();
+    }
+  }
+  static \u0275fac = function PinModalComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _PinModalComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _PinModalComponent, selectors: [["app-pin-modal"]], viewQuery: function PinModalComponent_Query(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275viewQuery(_c03, 5);
+    }
+    if (rf & 2) {
+      let _t;
+      \u0275\u0275queryRefresh(_t = \u0275\u0275loadQuery()) && (ctx.pinInput = _t.first);
+    }
+  }, inputs: { pinError: "pinError", showPinModal: "showPinModal" }, outputs: { close: "close", submit: "submit" }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 1, vars: 1, consts: [["pinInput", ""], ["class", "modal-backdrop", 3, "click", 4, "ngIf"], [1, "modal-backdrop", 3, "click"], ["role", "dialog", "aria-modal", "true", 1, "modal", 3, "click"], [1, "modal-close-x", 3, "click"], [1, "modal-icon-wrap"], ["width", "28", "height", "28", "viewBox", "0 0 24 24", "fill", "none", "stroke", "#6b7280", "stroke-width", "2"], ["x", "3", "y", "11", "width", "18", "height", "11", "rx", "2", "ry", "2"], ["d", "M7 11V7a5 5 0 0 1 10 0v4"], [1, "modal-body"], [1, "pin-input-wrapper"], ["type", "text", "placeholder", "Enter PIN", "maxlength", "6", "inputmode", "numeric", 1, "pin-input", 3, "ngModelChange", "keyup", "ngModel"], ["class", "pin-error", 4, "ngIf"], [1, "modal-actions"], [1, "btn-modal-cancel", 3, "click"], [1, "btn-modal-confirm", 3, "click"], [1, "pin-error"]], template: function PinModalComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275template(0, PinModalComponent_div_0_Template, 21, 2, "div", 1);
+    }
+    if (rf & 2) {
+      \u0275\u0275property("ngIf", ctx.showPinModal);
+    }
+  }, dependencies: [CommonModule, NgIf, FormsModule, DefaultValueAccessor, NgControlStatus, MaxLengthValidator, NgModel], styles: ["\n\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(107, 114, 128, 0.12);\n  border: 2px solid rgba(107, 114, 128, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.pin-input-wrapper[_ngcontent-%COMP%] {\n  margin: 16px 0;\n}\n.pin-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 18px;\n  text-align: center;\n  letter-spacing: 0.25em;\n  background: var(--bg-secondary);\n  color: var(--text);\n  box-sizing: border-box;\n}\n.pin-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary);\n}\n.pin-error[_ngcontent-%COMP%] {\n  color: #f56565;\n  font-size: 12px;\n  text-align: center;\n  margin-top: 8px;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #667eea 0%,\n      #764ba2 100%);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n/*# sourceMappingURL=pin-modal.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(PinModalComponent, { className: "PinModalComponent", filePath: "src/app/shared/components/pin-modal/pin-modal.component.ts", lineNumber: 20 });
+})();
+
+// src/app/shared/components/delete-modal/delete-modal.component.ts
+function DeleteModalComponent_div_0_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r1 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 1);
+    \u0275\u0275listener("click", function DeleteModalComponent_div_0_Template_div_click_0_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onBackdropClick($event));
+    });
+    \u0275\u0275elementStart(1, "div", 2);
+    \u0275\u0275listener("click", function DeleteModalComponent_div_0_Template_div_click_1_listener($event) {
+      \u0275\u0275restoreView(_r1);
+      return \u0275\u0275resetView($event.stopPropagation());
+    });
+    \u0275\u0275elementStart(2, "button", 3);
+    \u0275\u0275listener("click", function DeleteModalComponent_div_0_Template_button_click_2_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onClose());
+    });
+    \u0275\u0275text(3, "\u2715");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(4, "div", 4);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(5, "svg", 5);
+    \u0275\u0275element(6, "polyline", 6)(7, "path", 7)(8, "path", 8)(9, "path", 9);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(10, "h2");
+    \u0275\u0275text(11, "Delete this link?");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(12, "p", 10);
+    \u0275\u0275text(13, " You're about to permanently delete this link. Once deleted, it cannot be recovered. ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(14, "div", 11);
+    \u0275\u0275text(15);
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(16, "div", 12)(17, "span");
+    \u0275\u0275text(18, "\u26A0");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(19, " This action is irreversible. Anyone with the link will lose access immediately. ");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(20, "div", 13)(21, "button", 14);
+    \u0275\u0275listener("click", function DeleteModalComponent_div_0_Template_button_click_21_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onClose());
+    });
+    \u0275\u0275text(22, "Cancel");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(23, "button", 15);
+    \u0275\u0275listener("click", function DeleteModalComponent_div_0_Template_button_click_23_listener() {
+      \u0275\u0275restoreView(_r1);
+      const ctx_r1 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r1.onConfirm());
+    });
+    \u0275\u0275text(24, " Yes, delete it ");
+    \u0275\u0275elementEnd()()()();
+  }
+  if (rf & 2) {
+    const ctx_r1 = \u0275\u0275nextContext();
+    \u0275\u0275advance(15);
+    \u0275\u0275textInterpolate1(" ", ctx_r1.currentUrl, " ");
+  }
+}
+var DeleteModalComponent = class _DeleteModalComponent {
+  showDeleteModal = false;
+  currentUrl = "";
+  close = new EventEmitter();
+  confirm = new EventEmitter();
+  onClose() {
+    this.close.emit();
+  }
+  onConfirm() {
+    this.confirm.emit();
+  }
+  onBackdropClick(event) {
+    if (event.target.classList.contains("modal-backdrop")) {
+      this.onClose();
+    }
+  }
+  static \u0275fac = function DeleteModalComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _DeleteModalComponent)();
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _DeleteModalComponent, selectors: [["app-delete-modal"]], inputs: { showDeleteModal: "showDeleteModal", currentUrl: "currentUrl" }, outputs: { close: "close", confirm: "confirm" }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 1, vars: 1, consts: [["class", "modal-backdrop", 3, "click", 4, "ngIf"], [1, "modal-backdrop", 3, "click"], ["role", "dialog", "aria-modal", "true", 1, "modal", 3, "click"], [1, "modal-close-x", 3, "click"], [1, "modal-icon-wrap"], ["width", "28", "height", "28", "viewBox", "0 0 24 24", "fill", "none", "stroke", "#ef4444", "stroke-width", "2"], ["points", "3 6 5 6 21 6"], ["d", "M19 6l-1 14H6L5 6"], ["d", "M10 11v6M14 11v6"], ["d", "M9 6V4h6v2"], [1, "modal-body"], [1, "modal-url-preview"], [1, "modal-warning"], [1, "modal-actions"], [1, "btn-modal-cancel", 3, "click"], [1, "btn-modal-confirm", 3, "click"]], template: function DeleteModalComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275template(0, DeleteModalComponent_div_0_Template, 25, 1, "div", 0);
+    }
+    if (rf & 2) {
+      \u0275\u0275property("ngIf", ctx.showDeleteModal);
+    }
+  }, dependencies: [CommonModule, NgIf], styles: ["\n\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(239, 68, 68, 0.12);\n  border: 2px solid rgba(239, 68, 68, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.modal-url-preview[_ngcontent-%COMP%] {\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  padding: 10px 14px;\n  font-size: 13px;\n  color: var(--primary);\n  font-weight: 500;\n  text-align: center;\n  margin: 16px 0 24px;\n  word-break: break-all;\n}\n.modal-warning[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(239, 68, 68, 0.07);\n  border: 1px solid rgba(239, 68, 68, 0.2);\n  border-radius: 8px;\n  padding: 10px 14px;\n  margin-bottom: 24px;\n  font-size: 12.5px;\n  color: #fca5a5;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #ef4444,\n      #b91c1c);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n/*# sourceMappingURL=delete-modal.component.css.map */"] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(DeleteModalComponent, { className: "DeleteModalComponent", filePath: "src/app/shared/components/delete-modal/delete-modal.component.ts", lineNumber: 11 });
+})();
+
 // src/app/zip-text/text-viewer/text-viewer.component.ts
 function ZipTextViewerComponent_div_5_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 13);
-    \u0275\u0275element(1, "div", 14);
+    \u0275\u0275elementStart(0, "div", 15);
+    \u0275\u0275element(1, "div", 16);
     \u0275\u0275text(2, " One-time view ");
     \u0275\u0275elementEnd();
   }
@@ -60651,42 +61101,18 @@ function ZipTextViewerComponent_div_5_Template(rf, ctx) {
 function ZipTextViewerComponent_span_10_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span");
-    \u0275\u0275element(1, "i", 15);
+    \u0275\u0275element(1, "i", 17);
     \u0275\u0275elementEnd();
   }
 }
 function ZipTextViewerComponent_span_11_Template(rf, ctx) {
   if (rf & 1) {
     \u0275\u0275elementStart(0, "span");
-    \u0275\u0275element(1, "i", 16);
+    \u0275\u0275element(1, "i", 18);
     \u0275\u0275elementEnd();
   }
 }
 function ZipTextViewerComponent_div_13_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18);
-    \u0275\u0275text(2, "!");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p")(4, "strong");
-    \u0275\u0275text(5, "One-time link.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(6, " The receiver can only open this once. After they close the page, the text is permanently deleted and the link is invalidated forever. ");
-    \u0275\u0275elementEnd()();
-  }
-}
-function ZipTextViewerComponent_div_14_Template(rf, ctx) {
-  if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 17)(1, "div", 18);
-    \u0275\u0275text(2, "!");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(3, "p")(4, "strong");
-    \u0275\u0275text(5, "Copy this text now.");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(6, " This link has been opened and will be permanently deleted once you leave this page. It cannot be accessed again. ");
-    \u0275\u0275elementEnd()();
-  }
-}
-function ZipTextViewerComponent_div_15_Template(rf, ctx) {
   if (rf & 1) {
     const _r1 = \u0275\u0275getCurrentView();
     \u0275\u0275elementStart(0, "div", 19)(1, "div", 20)(2, "div", 21);
@@ -60696,7 +61122,7 @@ function ZipTextViewerComponent_div_15_Template(rf, ctx) {
     \u0275\u0275text(5, " You can delete this link from here. This option won't be available later. ");
     \u0275\u0275elementEnd()();
     \u0275\u0275elementStart(6, "button", 23);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_15_Template_button_click_6_listener() {
+    \u0275\u0275listener("click", function ZipTextViewerComponent_div_13_Template_button_click_6_listener() {
       \u0275\u0275restoreView(_r1);
       const ctx_r1 = \u0275\u0275nextContext();
       return \u0275\u0275resetView(ctx_r1.openDeleteModal());
@@ -60706,69 +61132,40 @@ function ZipTextViewerComponent_div_15_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
+function ZipTextViewerComponent_div_14_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 25)(1, "div", 26);
+    \u0275\u0275text(2, "\u{1F512}");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "p")(4, "strong");
+    \u0275\u0275text(5, "PIN protected.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(6, " This link is protected with a PIN. Make sure to share it with the receiver. ");
+    \u0275\u0275elementEnd()();
+  }
+}
+function ZipTextViewerComponent_div_15_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 26);
+    \u0275\u0275text(2, "!");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(3, "p")(4, "strong");
+    \u0275\u0275text(5, "One-time link.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(6, " The receiver can only open this once. After they close the page, the text is permanently deleted and the link is invalidated forever. ");
+    \u0275\u0275elementEnd()();
+  }
+}
 function ZipTextViewerComponent_div_16_Template(rf, ctx) {
   if (rf & 1) {
-    const _r3 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 25);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_16_Template_div_click_0_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.closeDeleteModal());
-    });
-    \u0275\u0275elementStart(1, "div", 26);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_16_Template_div_click_1_listener($event) {
-      \u0275\u0275restoreView(_r3);
-      return \u0275\u0275resetView($event.stopPropagation());
-    });
-    \u0275\u0275elementStart(2, "button", 27);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_16_Template_button_click_2_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.closeDeleteModal());
-    });
-    \u0275\u0275text(3, "\u2715");
+    \u0275\u0275elementStart(0, "div", 27)(1, "div", 26);
+    \u0275\u0275text(2, "!");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div", 28);
-    \u0275\u0275namespaceSVG();
-    \u0275\u0275elementStart(5, "svg", 29);
-    \u0275\u0275element(6, "polyline", 30)(7, "path", 31)(8, "path", 32)(9, "path", 33);
+    \u0275\u0275elementStart(3, "p")(4, "strong");
+    \u0275\u0275text(5, "Copy this text now.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275text(6, " This link has been opened and will be permanently deleted once you leave this page. It cannot be accessed again. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275namespaceHTML();
-    \u0275\u0275elementStart(10, "h2");
-    \u0275\u0275text(11, "Delete this link?");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(12, "p", 34);
-    \u0275\u0275text(13, " You're about to permanently delete this link. Once deleted, it cannot be recovered. ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(14, "div", 35);
-    \u0275\u0275text(15);
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(16, "div", 36)(17, "span");
-    \u0275\u0275text(18, "\u26A0");
-    \u0275\u0275elementEnd();
-    \u0275\u0275text(19, " This action is irreversible. Anyone with the link will lose access immediately. ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(20, "div", 37)(21, "button", 38);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_16_Template_button_click_21_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.closeDeleteModal());
-    });
-    \u0275\u0275text(22, " Cancel ");
-    \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(23, "button", 39);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_16_Template_button_click_23_listener() {
-      \u0275\u0275restoreView(_r3);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.confirmDelete());
-    });
-    \u0275\u0275text(24, " Yes, delete it ");
-    \u0275\u0275elementEnd()()()();
-  }
-  if (rf & 2) {
-    const ctx_r1 = \u0275\u0275nextContext();
-    \u0275\u0275advance(15);
-    \u0275\u0275textInterpolate1(" ", ctx_r1.currentUrl, " ");
   }
 }
 var ZipTextViewerComponent = class _ZipTextViewerComponent {
@@ -60785,12 +61182,18 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
   isOneTimeView = false;
   isCreator = false;
   showDeleteModal = false;
+  hasPin = false;
+  showPinModal = false;
+  enteredPin = "";
+  pinError = "";
   ngOnInit() {
     this.id = this.route.snapshot.paramMap.get("id");
     const tempText = this.commonService.getTempText();
     const isOneTimeView = this.commonService.getTempIsOneTimeView();
+    const hasPin = this.commonService.getTempHasPin();
     const fromBackend = this.commonService.getIsFromBackend();
     this.isOneTimeView = isOneTimeView;
+    this.hasPin = hasPin;
     this.isCreator = !fromBackend;
     this.headerService.setTitleAndDescription({
       pageTitle: PAGE_TITLE.ZIP_TEXT,
@@ -60810,11 +61213,17 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
           const result2 = response.data?.getZipText;
           let textValue = "";
           let isOneTime = false;
-          if (typeof result2 === "string") {
-            textValue = result2;
-          } else if (result2 && result2.text !== void 0) {
-            textValue = result2.text;
+          let hasPin2 = false;
+          if (result2 && typeof result2 === "object") {
+            textValue = result2.text || "";
             isOneTime = result2.isOneTimeView || false;
+            hasPin2 = result2.hasPin || false;
+          }
+          if (hasPin2 && !textValue) {
+            this.hasPin = true;
+            this.showPinModal = true;
+            this.setupUrl();
+            return;
           }
           this.text = textValue;
           this.isOneTimeView = isOneTime;
@@ -60822,7 +61231,20 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
           this.setupUrl();
         },
         error: (err) => {
-          console.error("Error fetching text", err);
+          console.error("Full error:", err);
+          let errorMsg = "";
+          if (err?.graphQLErrors?.length) {
+            errorMsg = err.graphQLErrors[0].message;
+          } else if (err?.message) {
+            errorMsg = err.message;
+          }
+          console.error("Error message:", errorMsg);
+          if (errorMsg.includes("PIN")) {
+            this.hasPin = true;
+            this.showPinModal = true;
+            this.setupUrl();
+            return;
+          }
           this.router.navigate(["/404"]);
         }
       });
@@ -60869,10 +61291,36 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       }
     });
   }
+  onPinModalClose() {
+    this.showPinModal = false;
+    this.router.navigate(["/text"]);
+  }
+  onPinSubmit(pin) {
+    if (!pin.trim()) {
+      this.pinError = "Please enter a PIN";
+      return;
+    }
+    this.pinError = "";
+    this.commonService.getZipText(this.id, pin).subscribe({
+      next: (response) => {
+        const result2 = response.data?.getZipText;
+        if (result2 && result2.text !== void 0) {
+          this.showPinModal = false;
+          this.text = result2.text;
+          this.isOneTimeView = result2.isOneTimeView || false;
+          this.isCreator = false;
+        }
+      },
+      error: (err) => {
+        console.error("Error verifying PIN", err);
+        this.pinError = "Invalid PIN";
+      }
+    });
+  }
   static \u0275fac = function ZipTextViewerComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipTextViewerComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextViewerComponent, selectors: [["app-text-viewer"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 17, vars: 12, consts: [[1, "main-content-text"], [1, "top-row"], ["title", "Go back", 1, "back-btn", 3, "click"], [1, "fa-solid", "fa-arrow-left", "fa"], ["class", "one-time-badge", 4, "ngIf"], [1, "textarea-flex-wrapper"], ["rows", "8", "readonly", ""], ["title", "Copy text", 1, "copy-text-btn", 3, "click"], [4, "ngIf"], [3, "url"], ["class", "warning-box", 4, "ngIf"], ["class", "delete-row", 4, "ngIf"], ["class", "modal-backdrop", 3, "click", 4, "ngIf"], [1, "one-time-badge"], [1, "badge-dot"], [1, "fa-solid", "fa", "fa-copy"], [1, "fa-solid", "fa", "fa-clipboard-check"], [1, "warning-box"], [1, "warn-icon"], [1, "delete-row"], [1, "delete-row-content"], [1, "delete-row-title"], [1, "delete-row-sub"], [1, "btn-delete", 3, "click"], [1, "fa", "fa-trash"], [1, "modal-backdrop", 3, "click"], ["role", "dialog", "aria-modal", "true", 1, "modal", 3, "click"], [1, "modal-close-x", 3, "click"], [1, "modal-icon-wrap"], ["width", "28", "height", "28", "viewBox", "0 0 24 24", "fill", "none", "stroke", "#ef4444", "stroke-width", "2"], ["points", "3 6 5 6 21 6"], ["d", "M19 6l-1 14H6L5 6"], ["d", "M10 11v6M14 11v6"], ["d", "M9 6V4h6v2"], [1, "modal-body"], [1, "modal-url-preview"], [1, "modal-warning"], [1, "modal-actions"], [1, "btn-modal-cancel", 3, "click"], [1, "btn-modal-confirm", 3, "click"]], template: function ZipTextViewerComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextViewerComponent, selectors: [["app-text-viewer"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 19, vars: 16, consts: [[1, "main-content-text"], [1, "top-row"], ["title", "Go back", 1, "back-btn", 3, "click"], [1, "fa-solid", "fa-arrow-left", "fa"], ["class", "one-time-badge", 4, "ngIf"], [1, "textarea-flex-wrapper"], ["rows", "8", "readonly", ""], ["title", "Copy text", 1, "copy-text-btn", 3, "click"], [4, "ngIf"], [3, "url"], ["class", "delete-row", 4, "ngIf"], ["class", "warning-box pin-notice", 4, "ngIf"], ["class", "warning-box", 4, "ngIf"], [3, "close", "confirm", "showDeleteModal", "currentUrl"], [3, "close", "submit", "showPinModal", "pinError"], [1, "one-time-badge"], [1, "badge-dot"], [1, "fa-solid", "fa", "fa-copy"], [1, "fa-solid", "fa", "fa-clipboard-check"], [1, "delete-row"], [1, "delete-row-content"], [1, "delete-row-title"], [1, "delete-row-sub"], [1, "btn-delete", 3, "click"], [1, "fa", "fa-trash"], [1, "warning-box", "pin-notice"], [1, "warn-icon"], [1, "warning-box"]], template: function ZipTextViewerComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "button", 2);
       \u0275\u0275listener("click", function ZipTextViewerComponent_Template_button_click_2_listener() {
@@ -60893,9 +61341,22 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       \u0275\u0275template(10, ZipTextViewerComponent_span_10_Template, 2, 0, "span", 8)(11, ZipTextViewerComponent_span_11_Template, 2, 0, "span", 8);
       \u0275\u0275elementEnd()();
       \u0275\u0275element(12, "app-share-card", 9);
-      \u0275\u0275template(13, ZipTextViewerComponent_div_13_Template, 7, 0, "div", 10)(14, ZipTextViewerComponent_div_14_Template, 7, 0, "div", 10)(15, ZipTextViewerComponent_div_15_Template, 9, 0, "div", 11);
+      \u0275\u0275template(13, ZipTextViewerComponent_div_13_Template, 9, 0, "div", 10)(14, ZipTextViewerComponent_div_14_Template, 7, 0, "div", 11)(15, ZipTextViewerComponent_div_15_Template, 7, 0, "div", 12)(16, ZipTextViewerComponent_div_16_Template, 7, 0, "div", 12);
       \u0275\u0275elementEnd();
-      \u0275\u0275template(16, ZipTextViewerComponent_div_16_Template, 25, 1, "div", 12);
+      \u0275\u0275elementStart(17, "app-delete-modal", 13);
+      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_delete_modal_close_17_listener() {
+        return ctx.closeDeleteModal();
+      })("confirm", function ZipTextViewerComponent_Template_app_delete_modal_confirm_17_listener() {
+        return ctx.confirmDelete();
+      });
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(18, "app-pin-modal", 14);
+      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_pin_modal_close_18_listener() {
+        return ctx.onPinModalClose();
+      })("submit", function ZipTextViewerComponent_Template_app_pin_modal_submit_18_listener($event) {
+        return ctx.onPinSubmit($event);
+      });
+      \u0275\u0275elementEnd();
     }
     if (rf & 2) {
       \u0275\u0275advance(4);
@@ -60913,18 +61374,28 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       \u0275\u0275advance();
       \u0275\u0275property("url", ctx.currentUrl);
       \u0275\u0275advance();
+      \u0275\u0275property("ngIf", ctx.isCreator);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngIf", ctx.isCreator && ctx.hasPin && ctx.text);
+      \u0275\u0275advance();
       \u0275\u0275property("ngIf", ctx.isCreator && ctx.isOneTimeView && ctx.text);
       \u0275\u0275advance();
       \u0275\u0275property("ngIf", !ctx.isCreator && ctx.isOneTimeView && ctx.text);
       \u0275\u0275advance();
-      \u0275\u0275property("ngIf", ctx.isCreator);
+      \u0275\u0275property("showDeleteModal", ctx.showDeleteModal)("currentUrl", ctx.currentUrl);
       \u0275\u0275advance();
-      \u0275\u0275property("ngIf", ctx.showDeleteModal);
+      \u0275\u0275property("showPinModal", ctx.showPinModal)("pinError", ctx.pinError);
     }
-  }, dependencies: [CommonModule, NgIf, ShareCardComponent], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n}\n.top-row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 16px;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%] {\n  position: relative;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ddd;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  resize: vertical;\n  background: #fdfdfd;\n  color: #333;\n}\n.back-btn[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  background: transparent;\n  border: none;\n  color: var(--primary);\n  font-size: 14px;\n  cursor: pointer;\n  transition: opacity 0.2s ease, transform 0.1s ease;\n}\n.back-btn[_ngcontent-%COMP%]:hover {\n  opacity: 0.7;\n  transform: translateX(-2px);\n}\n.copy-text-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0.6rem;\n  right: 0.6rem;\n  background: none;\n  border: none;\n  cursor: pointer;\n  font-size: 1rem;\n  color: #555;\n  transition: color 0.25s ease, transform 0.2s ease;\n}\n.copy-text-btn[_ngcontent-%COMP%]:hover {\n  color: #000;\n}\n.copy-text-btn.copied[_ngcontent-%COMP%] {\n  color: #28a745;\n  transform: scale(1.1);\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    padding: 0.85rem;\n    font-size: 0.95rem;\n  }\n  .back-btn[_ngcontent-%COMP%] {\n    font-size: 13px;\n    margin-bottom: 12px;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    top: 0.5rem;\n    right: 0.5rem;\n    font-size: 0.95rem;\n  }\n}\n@media (max-width: 480px) {\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n}\n.warning-box[_ngcontent-%COMP%] {\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 10px;\n  padding: 14px 16px;\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  justify-content: center;\n  margin-top: 16px;\n  text-align: center;\n}\n.warn-icon[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  background: var(--warning-icon, #5b6ef5);\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 11px;\n  font-weight: 700;\n  color: #fff;\n  flex-shrink: 0;\n  margin-top: 1px;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 13px;\n  line-height: 1.55;\n  color: var(--warning-text, #8fa3ff);\n  margin-bottom: 0;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--accent2, #7c8ff7);\n}\n.one-time-badge-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  margin-bottom: 8px;\n}\n.one-time-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.one-time-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.delete-row[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px dashed var(--border-color);\n  border-radius: 12px;\n  padding: 10px 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  margin: 16px auto 0;\n  max-width: 500px;\n  transition: border-color 0.2s;\n}\n.delete-row[_ngcontent-%COMP%]:hover {\n  border-color: var(--primary);\n}\n.delete-row-content[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.delete-row-title[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--text);\n  margin-bottom: 2px;\n}\n.delete-row-sub[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--text-secondary);\n}\n.btn-delete[_ngcontent-%COMP%] {\n  background: transparent;\n  border: 1px solid #f56565;\n  color: #f56565;\n  font-size: 13px;\n  font-weight: 600;\n  padding: 7px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n  white-space: nowrap;\n  flex-shrink: 0;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  transition: background 0.2s;\n}\n.btn-delete[_ngcontent-%COMP%]:hover {\n  background: rgba(245, 101, 101, 0.12);\n}\n.delete-row.deleted[_ngcontent-%COMP%] {\n  border-color: #2d3748;\n  opacity: 0.45;\n  pointer-events: none;\n}\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(239, 68, 68, 0.12);\n  border: 2px solid rgba(239, 68, 68, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.modal-url-preview[_ngcontent-%COMP%] {\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  padding: 10px 14px;\n  font-size: 13px;\n  color: var(--primary);\n  font-weight: 500;\n  text-align: center;\n  margin: 16px 0 24px;\n  word-break: break-all;\n}\n.modal-warning[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(239, 68, 68, 0.07);\n  border: 1px solid rgba(239, 68, 68, 0.2);\n  border-radius: 8px;\n  padding: 10px 14px;\n  margin-bottom: 24px;\n  font-size: 12.5px;\n  color: #fca5a5;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #ef4444,\n      #b91c1c);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n/*# sourceMappingURL=text-viewer.component.css.map */"] });
+  }, dependencies: [
+    CommonModule,
+    NgIf,
+    ShareCardComponent,
+    PinModalComponent,
+    DeleteModalComponent
+  ], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n}\n.top-row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 16px;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%] {\n  position: relative;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ddd;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  resize: vertical;\n  background: #fdfdfd;\n  color: #333;\n}\n.back-btn[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  background: transparent;\n  border: none;\n  color: var(--primary);\n  font-size: 14px;\n  cursor: pointer;\n  transition: opacity 0.2s ease, transform 0.1s ease;\n}\n.back-btn[_ngcontent-%COMP%]:hover {\n  opacity: 0.7;\n  transform: translateX(-2px);\n}\n.copy-text-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0.6rem;\n  right: 0.6rem;\n  background: none;\n  border: none;\n  cursor: pointer;\n  font-size: 1rem;\n  color: #555;\n  transition: color 0.25s ease, transform 0.2s ease;\n}\n.copy-text-btn[_ngcontent-%COMP%]:hover {\n  color: #000;\n}\n.copy-text-btn.copied[_ngcontent-%COMP%] {\n  color: #28a745;\n  transform: scale(1.1);\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    padding: 0.85rem;\n    font-size: 0.95rem;\n  }\n  .back-btn[_ngcontent-%COMP%] {\n    font-size: 13px;\n    margin-bottom: 12px;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    top: 0.5rem;\n    right: 0.5rem;\n    font-size: 0.95rem;\n  }\n}\n@media (max-width: 480px) {\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n}\n.warning-box[_ngcontent-%COMP%] {\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 10px;\n  padding: 14px 16px;\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  justify-content: center;\n  margin: 16px auto 0;\n  text-align: center;\n  max-width: 500px;\n}\n.warn-icon[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  background: var(--warning-icon, #5b6ef5);\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 11px;\n  font-weight: 700;\n  color: #fff;\n  flex-shrink: 0;\n  margin-top: 1px;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 13px;\n  line-height: 1.55;\n  color: var(--warning-text, #8fa3ff);\n  margin-bottom: 0;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--accent2, #7c8ff7);\n}\n.pin-notice[_ngcontent-%COMP%]   .warn-icon[_ngcontent-%COMP%] {\n  background: #10b981;\n}\n.one-time-badge-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  margin-bottom: 8px;\n}\n.one-time-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.one-time-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.delete-row[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px dashed var(--border-color);\n  border-radius: 12px;\n  padding: 10px 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  margin: 16px auto 0;\n  max-width: 500px;\n  transition: border-color 0.2s;\n}\n.delete-row[_ngcontent-%COMP%]:hover {\n  border-color: var(--primary);\n}\n.delete-row-content[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.delete-row-title[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--text);\n  margin-bottom: 2px;\n}\n.delete-row-sub[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--text-secondary);\n}\n.btn-delete[_ngcontent-%COMP%] {\n  background: transparent;\n  border: 1px solid #f56565;\n  color: #f56565;\n  font-size: 13px;\n  font-weight: 600;\n  padding: 7px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n  white-space: nowrap;\n  flex-shrink: 0;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  transition: background 0.2s;\n}\n.btn-delete[_ngcontent-%COMP%]:hover {\n  background: rgba(245, 101, 101, 0.12);\n}\n.delete-row.deleted[_ngcontent-%COMP%] {\n  border-color: #2d3748;\n  opacity: 0.45;\n  pointer-events: none;\n}\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(239, 68, 68, 0.12);\n  border: 2px solid rgba(239, 68, 68, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.modal-url-preview[_ngcontent-%COMP%] {\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  padding: 10px 14px;\n  font-size: 13px;\n  color: var(--primary);\n  font-weight: 500;\n  text-align: center;\n  margin: 16px 0 24px;\n  word-break: break-all;\n}\n.modal-warning[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(239, 68, 68, 0.07);\n  border: 1px solid rgba(239, 68, 68, 0.2);\n  border-radius: 8px;\n  padding: 10px 14px;\n  margin-bottom: 24px;\n  font-size: 12.5px;\n  color: #fca5a5;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #ef4444,\n      #b91c1c);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n.pin-input-wrapper[_ngcontent-%COMP%] {\n  margin: 16px 0;\n}\n.pin-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 18px;\n  text-align: center;\n  letter-spacing: 0.25em;\n  background: var(--bg-secondary);\n  color: var(--text);\n  box-sizing: border-box;\n}\n.pin-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary);\n}\n.pin-error[_ngcontent-%COMP%] {\n  color: #f56565;\n  font-size: 12px;\n  text-align: center;\n  margin-top: 8px;\n}\n/*# sourceMappingURL=text-viewer.component.css.map */"] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextViewerComponent, { className: "ZipTextViewerComponent", filePath: "src/app/zip-text/text-viewer/text-viewer.component.ts", lineNumber: 18 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextViewerComponent, { className: "ZipTextViewerComponent", filePath: "src/app/zip-text/text-viewer/text-viewer.component.ts", lineNumber: 25 });
 })();
 
 // src/app/zip-url/zip-url.component.ts
@@ -86618,7 +87089,7 @@ var BrowserQRCodeSvgWriter2 = (
 );
 
 // node_modules/@zxing/ngx-scanner/fesm2022/zxing-ngx-scanner.mjs
-var _c03 = ["preview"];
+var _c04 = ["preview"];
 var BrowserMultiFormatContinuousReader = class extends BrowserMultiFormatReader2 {
   /**
    * Returns the code reader scanner controls.
@@ -87225,7 +87696,7 @@ var ZXingScannerComponent = class _ZXingScannerComponent {
       selectors: [["zxing-scanner"]],
       viewQuery: function ZXingScannerComponent_Query(rf, ctx) {
         if (rf & 1) {
-          \u0275\u0275viewQuery(_c03, 7);
+          \u0275\u0275viewQuery(_c04, 7);
         }
         if (rf & 2) {
           let _t;
@@ -88425,7 +88896,6 @@ var HeaderComponent = class _HeaderComponent {
     this.isBrowser = isPlatformBrowser2(this.platformId);
   }
   ngOnInit() {
-    this.healthCheck();
     let theme = ThemeType.LIGHT;
     if (this.isBrowser) {
       const storedTheme = localStorage.getItem("theme");
