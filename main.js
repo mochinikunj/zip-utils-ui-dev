@@ -52767,6 +52767,8 @@ var GraphQL = {
         text
         isOneTimeView
         hasPin
+        isIpRestricted
+        expiryTime
       }
     }
   `,
@@ -52807,6 +52809,9 @@ var CommonService = class _CommonService {
   tempText = "";
   tempIsOneTimeView = false;
   tempHasPin = false;
+  tempIsIpRestricted = false;
+  tempExpiryInMinutes = null;
+  tempExpiryTime = null;
   isFromBackend = false;
   setTempText(text) {
     this.tempText = text;
@@ -52826,6 +52831,24 @@ var CommonService = class _CommonService {
   getTempHasPin() {
     return this.tempHasPin;
   }
+  setTempIsIpRestricted(isIpRestricted) {
+    this.tempIsIpRestricted = isIpRestricted;
+  }
+  getTempIsIpRestricted() {
+    return this.tempIsIpRestricted;
+  }
+  setTempExpiryInMinutes(expiryInMinutes) {
+    this.tempExpiryInMinutes = expiryInMinutes;
+  }
+  getTempExpiryInMinutes() {
+    return this.tempExpiryInMinutes;
+  }
+  setTempExpiryTime(expiryTime) {
+    this.tempExpiryTime = expiryTime;
+  }
+  getTempExpiryTime() {
+    return this.tempExpiryTime;
+  }
   setIsFromBackend(value) {
     this.isFromBackend = value;
   }
@@ -52836,6 +52859,9 @@ var CommonService = class _CommonService {
     this.tempText = "";
     this.tempIsOneTimeView = false;
     this.tempHasPin = false;
+    this.tempIsIpRestricted = false;
+    this.tempExpiryInMinutes = null;
+    this.tempExpiryTime = null;
     this.isFromBackend = false;
   }
   healthCheck() {
@@ -60173,14 +60199,17 @@ var ZipTextComponent = class _ZipTextComponent {
       this.loading = true;
       this.commonService.setTempText(this.textInput);
       this.commonService.setTempIsOneTimeView(this.isOneTimeView);
-      this.commonService.setIsFromBackend(false);
+      this.commonService.setTempHasPin(!!this.pinToggleComponent?.pinValue);
+      this.commonService.setTempIsIpRestricted(this.isIpRestricted);
       const expiry = this.expiryInMinutes ? parseInt(this.expiryInMinutes.toString(), 10) : null;
+      this.commonService.setTempExpiryInMinutes(expiry);
+      const expiryTimestamp = expiry ? Math.floor(Date.now() / 1e3) + expiry * 60 : null;
+      this.commonService.setTempExpiryTime(expiryTimestamp);
+      this.commonService.setIsFromBackend(false);
       this.commonService.generateZipTextUrl(this.textInput, expiry, this.customSlug, this.isIpRestricted, this.isOneTimeView, this.pinToggleComponent?.pinValue || null).subscribe({
         next: (response) => {
           const id = response.data?.generateZipTextUrl;
           if (id) {
-            const hasPin = !!this.pinToggleComponent?.pinValue;
-            this.commonService.setTempHasPin(hasPin);
             setTimeout(() => {
               this.loading = false;
               this.router.navigate(["/t", id]);
@@ -61097,52 +61126,264 @@ var DeleteModalComponent = class _DeleteModalComponent {
   (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(DeleteModalComponent, { className: "DeleteModalComponent", filePath: "src/app/shared/components/delete-modal/delete-modal.component.ts", lineNumber: 11 });
 })();
 
-// src/app/zip-text/text-viewer/text-viewer.component.ts
-function ZipTextViewerComponent_div_5_Template(rf, ctx) {
+// src/app/shared/components/countdown/countdown.component.ts
+function CountdownComponent_div_0_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 15);
-    \u0275\u0275element(1, "div", 16);
+    \u0275\u0275elementStart(0, "div", 1)(1, "div", 2);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(2, "svg", 3);
+    \u0275\u0275element(3, "circle", 4)(4, "circle", 5);
+    \u0275\u0275elementEnd()();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "span", 6);
+    \u0275\u0275text(6);
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(6);
+    \u0275\u0275textInterpolate(ctx_r0.countdownDisplay);
+  }
+}
+var CountdownComponent = class _CountdownComponent {
+  ngZone;
+  expiryTime = null;
+  isCreator = false;
+  expired = new EventEmitter();
+  countdownDisplay = "";
+  countdownInterval = null;
+  remainingAtStart = null;
+  constructor(ngZone) {
+    this.ngZone = ngZone;
+  }
+  ngOnInit() {
+    this.startCountdown();
+  }
+  ngOnDestroy() {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+  }
+  startCountdown() {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+    if (!this.expiryTime) {
+      this.countdownDisplay = "";
+      return;
+    }
+    const circumference = 2 * Math.PI * 11;
+    if (this.remainingAtStart === null) {
+      const now = Math.floor(Date.now() / 1e3);
+      this.remainingAtStart = this.expiryTime - now;
+    }
+    const setRing = (ratio) => {
+      const ring = document.querySelector(".mini-ring-fill");
+      const badge = document.querySelector(".countdown-badge");
+      if (ring) {
+        ring.style.strokeDasharray = `${circumference}`;
+        ring.style.strokeDashoffset = `${circumference * (1 - ratio)}`;
+        const warn = ratio <= 0.5 && ratio > 0.25;
+        const danger = ratio <= 0.25;
+        ring.classList.toggle("warn", warn);
+        ring.classList.toggle("danger", danger);
+        if (badge) {
+          badge.classList.toggle("warn", warn);
+          badge.classList.toggle("danger", danger);
+        }
+      }
+    };
+    const tick = () => {
+      const now = Math.floor(Date.now() / 1e3);
+      const remaining2 = this.expiryTime - now;
+      if (remaining2 <= 0) {
+        this.ngZone.run(() => {
+          this.countdownDisplay = "Expired";
+          this.expired.emit();
+        });
+        if (this.countdownInterval) {
+          clearInterval(this.countdownInterval);
+          this.countdownInterval = null;
+        }
+        return;
+      }
+      const ratio = remaining2 / this.remainingAtStart;
+      setRing(ratio);
+      this.ngZone.run(() => {
+        const totalMinutes = Math.ceil(remaining2 / 60);
+        if (totalMinutes <= 60) {
+          const mins = Math.floor(remaining2 / 60);
+          const secs = remaining2 % 60;
+          this.countdownDisplay = `${mins}:${secs.toString().padStart(2, "0")}`;
+        } else if (totalMinutes < 120) {
+          this.countdownDisplay = `${totalMinutes} min`;
+        } else {
+          const hours = Math.floor(totalMinutes / 60);
+          const mins = totalMinutes % 60;
+          if (mins === 0) {
+            this.countdownDisplay = `${hours}h`;
+          } else {
+            this.countdownDisplay = `${hours}h ${mins}m`;
+          }
+        }
+      });
+    };
+    setRing(1);
+    tick();
+    const remaining = this.expiryTime - Math.floor(Date.now() / 1e3);
+    if (remaining > 0) {
+      if (remaining <= 3600) {
+        this.countdownInterval = setInterval(tick, 1e3);
+      } else {
+        this.countdownInterval = setInterval(tick, 6e4);
+      }
+    }
+  }
+  static \u0275fac = function CountdownComponent_Factory(__ngFactoryType__) {
+    return new (__ngFactoryType__ || _CountdownComponent)(\u0275\u0275directiveInject(NgZone));
+  };
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _CountdownComponent, selectors: [["app-countdown"]], inputs: { expiryTime: "expiryTime", isCreator: "isCreator" }, outputs: { expired: "expired" }, standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 1, vars: 1, consts: [["class", "countdown-badge", 4, "ngIf"], [1, "countdown-badge"], [1, "mini-ring"], ["viewBox", "0 0 26 26"], ["cx", "13", "cy", "13", "r", "11", 1, "mini-ring-bg"], ["cx", "13", "cy", "13", "r", "11", 1, "mini-ring-fill"], [1, "countdown-text"]], template: function CountdownComponent_Template(rf, ctx) {
+    if (rf & 1) {
+      \u0275\u0275template(0, CountdownComponent_div_0_Template, 7, 1, "div", 0);
+    }
+    if (rf & 2) {
+      \u0275\u0275property("ngIf", ctx.countdownDisplay);
+    }
+  }, dependencies: [CommonModule, NgIf], styles: ['\n\n.countdown-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 4px 12px 4px 6px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring[_ngcontent-%COMP%] {\n  position: relative;\n  width: 24px;\n  height: 24px;\n  flex-shrink: 0;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring[_ngcontent-%COMP%]   svg[_ngcontent-%COMP%] {\n  transform: rotate(-90deg);\n  width: 24px;\n  height: 24px;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-bg[_ngcontent-%COMP%] {\n  fill: none;\n  stroke: var(--surface);\n  stroke-width: 3;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill[_ngcontent-%COMP%] {\n  fill: none;\n  stroke: var(--accent, #5b6ef5);\n  stroke-width: 3;\n  stroke-linecap: round;\n  stroke-dasharray: 69.115;\n  stroke-dashoffset: 0;\n  transition: stroke 0.5s;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill.warn[_ngcontent-%COMP%] {\n  stroke: #f7a44f;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill.danger[_ngcontent-%COMP%] {\n  stroke: var(--danger, #f75f5f);\n}\n.countdown-badge.warn[_ngcontent-%COMP%] {\n  border-color: rgba(247, 164, 79, 0.4);\n  background: rgba(42, 31, 14, 1);\n  color: #f7a44f;\n}\n.countdown-badge.danger[_ngcontent-%COMP%] {\n  border-color: rgba(247, 95, 95, 0.4);\n  background: rgba(42, 14, 14, 1);\n  color: var(--danger, #f75f5f);\n}\n.countdown-badge[_ngcontent-%COMP%]   .countdown-text[_ngcontent-%COMP%] {\n  font-family: "JetBrains Mono", monospace;\n  font-size: 14px;\n  font-weight: 600;\n}\n/*# sourceMappingURL=countdown.component.css.map */'] });
+};
+(() => {
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(CountdownComponent, { className: "CountdownComponent", filePath: "src/app/shared/components/countdown/countdown.component.ts", lineNumber: 11 });
+})();
+
+// src/app/zip-text/text-viewer/text-viewer.component.ts
+function ZipTextViewerComponent_div_6_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 20);
+    \u0275\u0275element(1, "div", 21);
     \u0275\u0275text(2, " One-time view ");
     \u0275\u0275elementEnd();
   }
 }
-function ZipTextViewerComponent_span_10_Template(rf, ctx) {
+function ZipTextViewerComponent_div_7_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span");
-    \u0275\u0275element(1, "i", 17);
+    \u0275\u0275elementStart(0, "div", 22);
+    \u0275\u0275element(1, "div", 21);
+    \u0275\u0275text(2, " PIN Protected ");
     \u0275\u0275elementEnd();
   }
 }
-function ZipTextViewerComponent_span_11_Template(rf, ctx) {
+function ZipTextViewerComponent_div_8_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "span");
-    \u0275\u0275element(1, "i", 18);
+    \u0275\u0275elementStart(0, "div", 23);
+    \u0275\u0275element(1, "div", 21);
+    \u0275\u0275text(2, " Same Network ");
     \u0275\u0275elementEnd();
   }
 }
-function ZipTextViewerComponent_div_13_Template(rf, ctx) {
+function ZipTextViewerComponent_div_9_Template(rf, ctx) {
   if (rf & 1) {
-    const _r1 = \u0275\u0275getCurrentView();
-    \u0275\u0275elementStart(0, "div", 19)(1, "div", 20)(2, "div", 21);
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275element(1, "div", 21);
+    \u0275\u0275text(2);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance(2);
+    \u0275\u0275textInterpolate1(" ", ctx_r0.getExpiryText(), " ");
+  }
+}
+function ZipTextViewerComponent_div_10_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275element(1, "div", 21);
+    \u0275\u0275text(2, " No Expiry ");
+    \u0275\u0275elementEnd();
+  }
+}
+function ZipTextViewerComponent_div_11_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "div", 24);
+    \u0275\u0275element(1, "div", 21);
+    \u0275\u0275text(2, " No Expiry ");
+    \u0275\u0275elementEnd();
+  }
+}
+function ZipTextViewerComponent_div_12_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r2 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div")(1, "app-countdown", 25);
+    \u0275\u0275listener("expired", function ZipTextViewerComponent_div_12_Template_app_countdown_expired_1_listener() {
+      \u0275\u0275restoreView(_r2);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.onExpired());
+    });
+    \u0275\u0275elementEnd()();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275advance();
+    \u0275\u0275property("expiryTime", ctx_r0.expiryTime)("isCreator", ctx_r0.isCreator);
+  }
+}
+function ZipTextViewerComponent_button_16_span_1_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span");
+    \u0275\u0275element(1, "i", 27);
+    \u0275\u0275elementEnd();
+  }
+}
+function ZipTextViewerComponent_button_16_span_2_Template(rf, ctx) {
+  if (rf & 1) {
+    \u0275\u0275elementStart(0, "span");
+    \u0275\u0275element(1, "i", 28);
+    \u0275\u0275elementEnd();
+  }
+}
+function ZipTextViewerComponent_button_16_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r3 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "button", 26);
+    \u0275\u0275listener("click", function ZipTextViewerComponent_button_16_Template_button_click_0_listener() {
+      \u0275\u0275restoreView(_r3);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.copyText());
+    });
+    \u0275\u0275template(1, ZipTextViewerComponent_button_16_span_1_Template, 2, 0, "span", 9)(2, ZipTextViewerComponent_button_16_span_2_Template, 2, 0, "span", 9);
+    \u0275\u0275elementEnd();
+  }
+  if (rf & 2) {
+    const ctx_r0 = \u0275\u0275nextContext();
+    \u0275\u0275classProp("copied", ctx_r0.textCopied);
+    \u0275\u0275advance();
+    \u0275\u0275property("ngIf", !ctx_r0.textCopied);
+    \u0275\u0275advance();
+    \u0275\u0275property("ngIf", ctx_r0.textCopied);
+  }
+}
+function ZipTextViewerComponent_div_18_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r4 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 29)(1, "div", 30)(2, "div", 31);
     \u0275\u0275text(3, "Changed your mind?");
     \u0275\u0275elementEnd();
-    \u0275\u0275elementStart(4, "div", 22);
+    \u0275\u0275elementStart(4, "div", 32);
     \u0275\u0275text(5, " You can delete this link from here. This option won't be available later. ");
     \u0275\u0275elementEnd()();
-    \u0275\u0275elementStart(6, "button", 23);
-    \u0275\u0275listener("click", function ZipTextViewerComponent_div_13_Template_button_click_6_listener() {
-      \u0275\u0275restoreView(_r1);
-      const ctx_r1 = \u0275\u0275nextContext();
-      return \u0275\u0275resetView(ctx_r1.openDeleteModal());
+    \u0275\u0275elementStart(6, "button", 33);
+    \u0275\u0275listener("click", function ZipTextViewerComponent_div_18_Template_button_click_6_listener() {
+      \u0275\u0275restoreView(_r4);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.openDeleteModal());
     });
-    \u0275\u0275element(7, "i", 24);
+    \u0275\u0275element(7, "i", 34);
     \u0275\u0275text(8, " Delete link ");
     \u0275\u0275elementEnd()();
   }
 }
-function ZipTextViewerComponent_div_14_Template(rf, ctx) {
+function ZipTextViewerComponent_div_19_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 25)(1, "div", 26);
+    \u0275\u0275elementStart(0, "div", 35)(1, "div", 36);
     \u0275\u0275text(2, "\u{1F512}");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "p")(4, "strong");
@@ -61152,9 +61393,9 @@ function ZipTextViewerComponent_div_14_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function ZipTextViewerComponent_div_15_Template(rf, ctx) {
+function ZipTextViewerComponent_div_20_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 27)(1, "div", 26);
+    \u0275\u0275elementStart(0, "div", 37)(1, "div", 36);
     \u0275\u0275text(2, "!");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "p")(4, "strong");
@@ -61164,9 +61405,9 @@ function ZipTextViewerComponent_div_15_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
-function ZipTextViewerComponent_div_16_Template(rf, ctx) {
+function ZipTextViewerComponent_div_21_Template(rf, ctx) {
   if (rf & 1) {
-    \u0275\u0275elementStart(0, "div", 27)(1, "div", 26);
+    \u0275\u0275elementStart(0, "div", 37)(1, "div", 36);
     \u0275\u0275text(2, "!");
     \u0275\u0275elementEnd();
     \u0275\u0275elementStart(3, "p")(4, "strong");
@@ -61176,12 +61417,38 @@ function ZipTextViewerComponent_div_16_Template(rf, ctx) {
     \u0275\u0275elementEnd()();
   }
 }
+function ZipTextViewerComponent_div_24_Template(rf, ctx) {
+  if (rf & 1) {
+    const _r5 = \u0275\u0275getCurrentView();
+    \u0275\u0275elementStart(0, "div", 38);
+    \u0275\u0275namespaceSVG();
+    \u0275\u0275elementStart(1, "svg", 39);
+    \u0275\u0275element(2, "circle", 40)(3, "line", 41)(4, "line", 42);
+    \u0275\u0275elementEnd();
+    \u0275\u0275namespaceHTML();
+    \u0275\u0275elementStart(5, "h2");
+    \u0275\u0275text(6, "Link Expired");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(7, "p");
+    \u0275\u0275text(8, "This link has expired. The text has been permanently deleted and cannot be accessed again.");
+    \u0275\u0275elementEnd();
+    \u0275\u0275elementStart(9, "button", 43);
+    \u0275\u0275listener("click", function ZipTextViewerComponent_div_24_Template_button_click_9_listener() {
+      \u0275\u0275restoreView(_r5);
+      const ctx_r0 = \u0275\u0275nextContext();
+      return \u0275\u0275resetView(ctx_r0.goBack());
+    });
+    \u0275\u0275text(10, "Go back");
+    \u0275\u0275elementEnd()();
+  }
+}
 var ZipTextViewerComponent = class _ZipTextViewerComponent {
   route = inject(ActivatedRoute);
   platformId = inject(PLATFORM_ID);
   headerService = inject(HeaderService);
   commonService = inject(CommonService);
   router = inject(Router);
+  ngZone = inject(NgZone);
   id = null;
   text = "";
   currentUrl = "";
@@ -61191,6 +61458,11 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
   isCreator = false;
   showDeleteModal = false;
   hasPin = false;
+  isIpRestricted = false;
+  expiryInMinutes = null;
+  expiryTime = null;
+  originalExpiryTime = null;
+  isExpired = false;
   showPinModal = false;
   enteredPin = "";
   pinError = "";
@@ -61199,9 +61471,16 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
     const tempText = this.commonService.getTempText();
     const isOneTimeView = this.commonService.getTempIsOneTimeView();
     const hasPin = this.commonService.getTempHasPin();
-    const fromBackend = this.commonService.getIsFromBackend();
+    const isIpRestricted = this.commonService.getTempIsIpRestricted();
+    const expiryInMinutes = this.commonService.getTempExpiryInMinutes();
+    const expiryTime = this.commonService.getTempExpiryTime();
     this.isOneTimeView = isOneTimeView;
     this.hasPin = hasPin;
+    this.isIpRestricted = isIpRestricted;
+    this.expiryInMinutes = expiryInMinutes;
+    this.expiryTime = expiryTime;
+    this.originalExpiryTime = expiryTime;
+    const fromBackend = this.commonService.getIsFromBackend();
     this.isCreator = !fromBackend;
     this.headerService.setTitleAndDescription({
       pageTitle: PAGE_TITLE.ZIP_TEXT,
@@ -61222,19 +61501,30 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
           let textValue = "";
           let isOneTime = false;
           let hasPin2 = false;
+          let isIp = false;
+          let expiryT = null;
           if (result2 && typeof result2 === "object") {
             textValue = result2.text || "";
             isOneTime = result2.isOneTimeView || false;
             hasPin2 = result2.hasPin || false;
+            isIp = result2.isIpRestricted || false;
+            expiryT = result2.expiryTime || null;
           }
           if (hasPin2 && !textValue) {
             this.hasPin = true;
+            this.isIpRestricted = isIp;
+            this.expiryTime = expiryT;
+            this.originalExpiryTime = expiryT;
             this.showPinModal = true;
             this.setupUrl();
             return;
           }
           this.text = textValue;
           this.isOneTimeView = isOneTime;
+          this.hasPin = hasPin2;
+          this.isIpRestricted = isIp;
+          this.expiryTime = expiryT;
+          this.originalExpiryTime = expiryT;
           this.isCreator = false;
           this.setupUrl();
         },
@@ -61316,6 +61606,10 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
           this.showPinModal = false;
           this.text = result2.text;
           this.isOneTimeView = result2.isOneTimeView || false;
+          this.hasPin = result2.hasPin || false;
+          this.isIpRestricted = result2.isIpRestricted || false;
+          this.expiryTime = result2.expiryTime || null;
+          this.originalExpiryTime = result2.expiryTime || null;
           this.isCreator = false;
         }
       },
@@ -61325,10 +61619,29 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       }
     });
   }
+  getExpiryText() {
+    if (!this.expiryInMinutes)
+      return "";
+    if (this.expiryInMinutes < 60) {
+      return `${this.expiryInMinutes} min`;
+    }
+    const hours = Math.floor(this.expiryInMinutes / 60);
+    const minutes = this.expiryInMinutes % 60;
+    if (minutes === 0) {
+      return `${hours} hr`;
+    }
+    return `${hours} hr ${minutes} min`;
+  }
+  ngOnDestroy() {
+  }
+  onExpired() {
+    this.isExpired = true;
+    this.text = "";
+  }
   static \u0275fac = function ZipTextViewerComponent_Factory(__ngFactoryType__) {
     return new (__ngFactoryType__ || _ZipTextViewerComponent)();
   };
-  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextViewerComponent, selectors: [["app-text-viewer"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 19, vars: 16, consts: [[1, "main-content-text"], [1, "top-row"], ["title", "Go back", 1, "back-btn", 3, "click"], [1, "fa-solid", "fa-arrow-left", "fa"], ["class", "one-time-badge", 4, "ngIf"], [1, "textarea-flex-wrapper"], ["rows", "8", "readonly", ""], ["title", "Copy text", 1, "copy-text-btn", 3, "click"], [4, "ngIf"], [3, "url"], ["class", "delete-row", 4, "ngIf"], ["class", "warning-box pin-notice", 4, "ngIf"], ["class", "warning-box", 4, "ngIf"], [3, "close", "confirm", "showDeleteModal", "currentUrl"], [3, "close", "submit", "showPinModal", "pinError"], [1, "one-time-badge"], [1, "badge-dot"], [1, "fa-solid", "fa", "fa-copy"], [1, "fa-solid", "fa", "fa-clipboard-check"], [1, "delete-row"], [1, "delete-row-content"], [1, "delete-row-title"], [1, "delete-row-sub"], [1, "btn-delete", 3, "click"], [1, "fa", "fa-trash"], [1, "warning-box", "pin-notice"], [1, "warn-icon"], [1, "warning-box"]], template: function ZipTextViewerComponent_Template(rf, ctx) {
+  static \u0275cmp = /* @__PURE__ */ \u0275\u0275defineComponent({ type: _ZipTextViewerComponent, selectors: [["app-text-viewer"]], standalone: true, features: [\u0275\u0275StandaloneFeature], decls: 25, vars: 22, consts: [[1, "main-content-text"], [1, "top-row"], ["title", "Go back", 1, "back-btn", 3, "click"], [1, "fa-solid", "fa-arrow-left", "fa"], [1, "badges"], ["class", "one-time-badge", 4, "ngIf"], ["class", "pin-badge", 4, "ngIf"], ["class", "ip-badge", 4, "ngIf"], ["class", "expiry-badge", 4, "ngIf"], [4, "ngIf"], [1, "textarea-flex-wrapper"], ["rows", "8", "readonly", ""], ["class", "copy-text-btn", "title", "Copy text", 3, "copied", "click", 4, "ngIf"], [3, "url"], ["class", "delete-row", 4, "ngIf"], ["class", "warning-box pin-notice", 4, "ngIf"], ["class", "warning-box", 4, "ngIf"], [3, "close", "confirm", "showDeleteModal", "currentUrl"], [3, "close", "submit", "showPinModal", "pinError"], ["class", "expired-overlay", 4, "ngIf"], [1, "one-time-badge"], [1, "badge-dot"], [1, "pin-badge"], [1, "ip-badge"], [1, "expiry-badge"], [3, "expired", "expiryTime", "isCreator"], ["title", "Copy text", 1, "copy-text-btn", 3, "click"], [1, "fa-solid", "fa", "fa-copy"], [1, "fa-solid", "fa", "fa-clipboard-check"], [1, "delete-row"], [1, "delete-row-content"], [1, "delete-row-title"], [1, "delete-row-sub"], [1, "btn-delete", 3, "click"], [1, "fa", "fa-trash"], [1, "warning-box", "pin-notice"], [1, "warn-icon"], [1, "warning-box"], [1, "expired-overlay"], ["width", "56", "height", "56", "fill", "none", "stroke", "#f75f5f", "stroke-width", "2", "viewBox", "0 0 24 24"], ["cx", "12", "cy", "12", "r", "10"], ["x1", "12", "y1", "8", "x2", "12", "y2", "12"], ["x1", "12", "y1", "16", "x2", "12.01", "y2", "16"], [1, "back-btn", 3, "click"]], template: function ZipTextViewerComponent_Template(rf, ctx) {
     if (rf & 1) {
       \u0275\u0275elementStart(0, "div", 0)(1, "div", 1)(2, "button", 2);
       \u0275\u0275listener("click", function ZipTextViewerComponent_Template_button_click_2_listener() {
@@ -61337,48 +61650,56 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       \u0275\u0275element(3, "i", 3);
       \u0275\u0275text(4);
       \u0275\u0275elementEnd();
-      \u0275\u0275template(5, ZipTextViewerComponent_div_5_Template, 3, 0, "div", 4);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(6, "div", 5)(7, "textarea", 6);
-      \u0275\u0275text(8);
-      \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(9, "button", 7);
-      \u0275\u0275listener("click", function ZipTextViewerComponent_Template_button_click_9_listener() {
-        return ctx.copyText();
-      });
-      \u0275\u0275template(10, ZipTextViewerComponent_span_10_Template, 2, 0, "span", 8)(11, ZipTextViewerComponent_span_11_Template, 2, 0, "span", 8);
+      \u0275\u0275elementStart(5, "div", 4);
+      \u0275\u0275template(6, ZipTextViewerComponent_div_6_Template, 3, 0, "div", 5)(7, ZipTextViewerComponent_div_7_Template, 3, 0, "div", 6)(8, ZipTextViewerComponent_div_8_Template, 3, 0, "div", 7)(9, ZipTextViewerComponent_div_9_Template, 3, 1, "div", 8)(10, ZipTextViewerComponent_div_10_Template, 3, 0, "div", 8)(11, ZipTextViewerComponent_div_11_Template, 3, 0, "div", 8)(12, ZipTextViewerComponent_div_12_Template, 2, 2, "div", 9);
       \u0275\u0275elementEnd()();
-      \u0275\u0275element(12, "app-share-card", 9);
-      \u0275\u0275template(13, ZipTextViewerComponent_div_13_Template, 9, 0, "div", 10)(14, ZipTextViewerComponent_div_14_Template, 7, 0, "div", 11)(15, ZipTextViewerComponent_div_15_Template, 7, 0, "div", 12)(16, ZipTextViewerComponent_div_16_Template, 7, 0, "div", 12);
+      \u0275\u0275elementStart(13, "div", 10)(14, "textarea", 11);
+      \u0275\u0275text(15);
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(17, "app-delete-modal", 13);
-      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_delete_modal_close_17_listener() {
+      \u0275\u0275template(16, ZipTextViewerComponent_button_16_Template, 3, 4, "button", 12);
+      \u0275\u0275elementEnd();
+      \u0275\u0275element(17, "app-share-card", 13);
+      \u0275\u0275template(18, ZipTextViewerComponent_div_18_Template, 9, 0, "div", 14)(19, ZipTextViewerComponent_div_19_Template, 7, 0, "div", 15)(20, ZipTextViewerComponent_div_20_Template, 7, 0, "div", 16)(21, ZipTextViewerComponent_div_21_Template, 7, 0, "div", 16);
+      \u0275\u0275elementEnd();
+      \u0275\u0275elementStart(22, "app-delete-modal", 17);
+      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_delete_modal_close_22_listener() {
         return ctx.closeDeleteModal();
-      })("confirm", function ZipTextViewerComponent_Template_app_delete_modal_confirm_17_listener() {
+      })("confirm", function ZipTextViewerComponent_Template_app_delete_modal_confirm_22_listener() {
         return ctx.confirmDelete();
       });
       \u0275\u0275elementEnd();
-      \u0275\u0275elementStart(18, "app-pin-modal", 14);
-      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_pin_modal_close_18_listener() {
+      \u0275\u0275elementStart(23, "app-pin-modal", 18);
+      \u0275\u0275listener("close", function ZipTextViewerComponent_Template_app_pin_modal_close_23_listener() {
         return ctx.onPinModalClose();
-      })("submit", function ZipTextViewerComponent_Template_app_pin_modal_submit_18_listener($event) {
+      })("submit", function ZipTextViewerComponent_Template_app_pin_modal_submit_23_listener($event) {
         return ctx.onPinSubmit($event);
       });
       \u0275\u0275elementEnd();
+      \u0275\u0275template(24, ZipTextViewerComponent_div_24_Template, 11, 0, "div", 19);
     }
     if (rf & 2) {
       \u0275\u0275advance(4);
       \u0275\u0275textInterpolate1(" ", ctx.backButtonText, " ");
+      \u0275\u0275advance(2);
+      \u0275\u0275property("ngIf", ctx.isOneTimeView);
       \u0275\u0275advance();
-      \u0275\u0275property("ngIf", !ctx.isCreator && ctx.isOneTimeView);
-      \u0275\u0275advance(3);
-      \u0275\u0275textInterpolate(ctx.text);
+      \u0275\u0275property("ngIf", ctx.hasPin);
       \u0275\u0275advance();
-      \u0275\u0275classProp("copied", ctx.textCopied);
+      \u0275\u0275property("ngIf", ctx.isIpRestricted);
       \u0275\u0275advance();
-      \u0275\u0275property("ngIf", !ctx.textCopied);
+      \u0275\u0275property("ngIf", ctx.isCreator && (ctx.expiryInMinutes || ctx.expiryTime));
       \u0275\u0275advance();
-      \u0275\u0275property("ngIf", ctx.textCopied);
+      \u0275\u0275property("ngIf", ctx.isCreator && !ctx.expiryInMinutes && !ctx.expiryTime);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngIf", !ctx.isCreator && !ctx.expiryTime);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngIf", !ctx.isCreator && ctx.expiryTime);
+      \u0275\u0275advance();
+      \u0275\u0275classProp("expired", ctx.isExpired);
+      \u0275\u0275advance(2);
+      \u0275\u0275textInterpolate(ctx.isExpired ? "" : ctx.text);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngIf", !ctx.isExpired);
       \u0275\u0275advance();
       \u0275\u0275property("url", ctx.currentUrl);
       \u0275\u0275advance();
@@ -61393,17 +61714,20 @@ var ZipTextViewerComponent = class _ZipTextViewerComponent {
       \u0275\u0275property("showDeleteModal", ctx.showDeleteModal)("currentUrl", ctx.currentUrl);
       \u0275\u0275advance();
       \u0275\u0275property("showPinModal", ctx.showPinModal)("pinError", ctx.pinError);
+      \u0275\u0275advance();
+      \u0275\u0275property("ngIf", ctx.isExpired);
     }
   }, dependencies: [
     CommonModule,
     NgIf,
     ShareCardComponent,
     PinModalComponent,
-    DeleteModalComponent
-  ], styles: ["\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n}\n.top-row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 16px;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%] {\n  position: relative;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ddd;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  resize: vertical;\n  background: #fdfdfd;\n  color: #333;\n}\n.back-btn[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  background: transparent;\n  border: none;\n  color: var(--primary);\n  font-size: 14px;\n  cursor: pointer;\n  transition: opacity 0.2s ease, transform 0.1s ease;\n}\n.back-btn[_ngcontent-%COMP%]:hover {\n  opacity: 0.7;\n  transform: translateX(-2px);\n}\n.copy-text-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0.6rem;\n  right: 0.6rem;\n  background: none;\n  border: none;\n  cursor: pointer;\n  font-size: 1rem;\n  color: #555;\n  transition: color 0.25s ease, transform 0.2s ease;\n}\n.copy-text-btn[_ngcontent-%COMP%]:hover {\n  color: #000;\n}\n.copy-text-btn.copied[_ngcontent-%COMP%] {\n  color: #28a745;\n  transform: scale(1.1);\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    padding: 0.85rem;\n    font-size: 0.95rem;\n  }\n  .back-btn[_ngcontent-%COMP%] {\n    font-size: 13px;\n    margin-bottom: 12px;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    top: 0.5rem;\n    right: 0.5rem;\n    font-size: 0.95rem;\n  }\n}\n@media (max-width: 480px) {\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n}\n.warning-box[_ngcontent-%COMP%] {\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 10px;\n  padding: 14px 16px;\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  justify-content: center;\n  margin: 16px auto 0;\n  text-align: center;\n  max-width: 500px;\n}\n.warn-icon[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  background: var(--warning-icon, #5b6ef5);\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 11px;\n  font-weight: 700;\n  color: #fff;\n  flex-shrink: 0;\n  margin-top: 1px;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 13px;\n  line-height: 1.55;\n  color: var(--warning-text, #8fa3ff);\n  margin-bottom: 0;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--accent2, #7c8ff7);\n}\n.pin-notice[_ngcontent-%COMP%]   .warn-icon[_ngcontent-%COMP%] {\n  background: #10b981;\n}\n.one-time-badge-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  margin-bottom: 8px;\n}\n.one-time-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.one-time-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.delete-row[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px dashed var(--border-color);\n  border-radius: 12px;\n  padding: 10px 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  margin: 16px auto 0;\n  max-width: 500px;\n  transition: border-color 0.2s;\n}\n.delete-row[_ngcontent-%COMP%]:hover {\n  border-color: var(--primary);\n}\n.delete-row-content[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.delete-row-title[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--text);\n  margin-bottom: 2px;\n}\n.delete-row-sub[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--text-secondary);\n}\n.btn-delete[_ngcontent-%COMP%] {\n  background: transparent;\n  border: 1px solid #f56565;\n  color: #f56565;\n  font-size: 13px;\n  font-weight: 600;\n  padding: 7px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n  white-space: nowrap;\n  flex-shrink: 0;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  transition: background 0.2s;\n}\n.btn-delete[_ngcontent-%COMP%]:hover {\n  background: rgba(245, 101, 101, 0.12);\n}\n.delete-row.deleted[_ngcontent-%COMP%] {\n  border-color: #2d3748;\n  opacity: 0.45;\n  pointer-events: none;\n}\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(239, 68, 68, 0.12);\n  border: 2px solid rgba(239, 68, 68, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.modal-url-preview[_ngcontent-%COMP%] {\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  padding: 10px 14px;\n  font-size: 13px;\n  color: var(--primary);\n  font-weight: 500;\n  text-align: center;\n  margin: 16px 0 24px;\n  word-break: break-all;\n}\n.modal-warning[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(239, 68, 68, 0.07);\n  border: 1px solid rgba(239, 68, 68, 0.2);\n  border-radius: 8px;\n  padding: 10px 14px;\n  margin-bottom: 24px;\n  font-size: 12.5px;\n  color: #fca5a5;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #ef4444,\n      #b91c1c);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n.pin-input-wrapper[_ngcontent-%COMP%] {\n  margin: 16px 0;\n}\n.pin-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 18px;\n  text-align: center;\n  letter-spacing: 0.25em;\n  background: var(--bg-secondary);\n  color: var(--text);\n  box-sizing: border-box;\n}\n.pin-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary);\n}\n.pin-error[_ngcontent-%COMP%] {\n  color: #f56565;\n  font-size: 12px;\n  text-align: center;\n  margin-top: 8px;\n}\n/*# sourceMappingURL=text-viewer.component.css.map */"] });
+    DeleteModalComponent,
+    CountdownComponent
+  ], styles: ['\n\n.main-content-text[_ngcontent-%COMP%] {\n  max-width: 1200px;\n  margin: 2rem auto;\n  padding: 2rem;\n  background: var(--card-bg);\n  border-radius: 1.5rem;\n  box-shadow: 0 6px 16px var(--shadow);\n}\n.top-row[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 16px;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%] {\n  position: relative;\n}\n.textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 1rem;\n  border: 1px solid #ddd;\n  border-radius: 0.5rem;\n  font-size: 1rem;\n  resize: vertical;\n  background: #fdfdfd;\n  color: #333;\n}\n.back-btn[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 6px;\n  background: transparent;\n  border: none;\n  color: var(--primary);\n  font-size: 14px;\n  cursor: pointer;\n  transition: opacity 0.2s ease, transform 0.1s ease;\n}\n.back-btn[_ngcontent-%COMP%]:hover {\n  opacity: 0.7;\n  transform: translateX(-2px);\n}\n.copy-text-btn[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 0.6rem;\n  right: 0.6rem;\n  background: none;\n  border: none;\n  cursor: pointer;\n  font-size: 1rem;\n  color: #555;\n  transition: color 0.25s ease, transform 0.2s ease;\n}\n.copy-text-btn[_ngcontent-%COMP%]:hover {\n  color: #000;\n}\n.copy-text-btn.copied[_ngcontent-%COMP%] {\n  color: #28a745;\n  transform: scale(1.1);\n}\n@media (max-width: 1024px) {\n  .main-content-text[_ngcontent-%COMP%] {\n    max-width: 100%;\n    margin: 0.75rem;\n    padding: 1rem;\n    border-radius: 1rem;\n  }\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    padding: 0.85rem;\n    font-size: 0.95rem;\n  }\n  .back-btn[_ngcontent-%COMP%] {\n    font-size: 13px;\n    margin-bottom: 12px;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    top: 0.5rem;\n    right: 0.5rem;\n    font-size: 0.95rem;\n  }\n}\n@media (max-width: 480px) {\n  .textarea-flex-wrapper[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n  .copy-text-btn[_ngcontent-%COMP%] {\n    font-size: 0.9rem;\n  }\n}\n.warning-box[_ngcontent-%COMP%] {\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 10px;\n  padding: 14px 16px;\n  display: flex;\n  gap: 12px;\n  align-items: center;\n  justify-content: center;\n  margin: 16px auto 0;\n  text-align: center;\n  max-width: 500px;\n}\n.warn-icon[_ngcontent-%COMP%] {\n  width: 20px;\n  height: 20px;\n  background: var(--warning-icon, #5b6ef5);\n  border-radius: 50%;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  font-size: 11px;\n  font-weight: 700;\n  color: #fff;\n  flex-shrink: 0;\n  margin-top: 1px;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  font-size: 13px;\n  line-height: 1.55;\n  color: var(--warning-text, #8fa3ff);\n  margin-bottom: 0;\n}\n.warning-box[_ngcontent-%COMP%]   p[_ngcontent-%COMP%]   strong[_ngcontent-%COMP%] {\n  color: var(--accent2, #7c8ff7);\n}\n.pin-notice[_ngcontent-%COMP%]   .warn-icon[_ngcontent-%COMP%] {\n  background: #10b981;\n}\n.one-time-badge-wrapper[_ngcontent-%COMP%] {\n  display: flex;\n  justify-content: flex-end;\n  margin-bottom: 8px;\n}\n.one-time-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.one-time-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.badges[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.pin-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.pin-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.ip-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.ip-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.expiry-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 6px 14px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.expiry-badge[_ngcontent-%COMP%]   .badge-dot[_ngcontent-%COMP%] {\n  width: 8px;\n  height: 8px;\n  background: var(--accent, #5b6ef5);\n  border-radius: 50%;\n}\n.countdown-badge[_ngcontent-%COMP%] {\n  display: inline-flex;\n  align-items: center;\n  gap: 8px;\n  background: var(--warning-bg, #131a35);\n  border: 1.5px solid var(--warning-border, #2a3670);\n  border-radius: 999px;\n  padding: 4px 12px 4px 6px;\n  font-size: 13px;\n  font-weight: 600;\n  color: var(--warning-text, #8fa3ff);\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring[_ngcontent-%COMP%] {\n  position: relative;\n  width: 24px;\n  height: 24px;\n  flex-shrink: 0;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring[_ngcontent-%COMP%]   svg[_ngcontent-%COMP%] {\n  transform: rotate(-90deg);\n  width: 24px;\n  height: 24px;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-bg[_ngcontent-%COMP%] {\n  fill: none;\n  stroke: var(--surface);\n  stroke-width: 3;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill[_ngcontent-%COMP%] {\n  fill: none;\n  stroke: var(--accent, #5b6ef5);\n  stroke-width: 3;\n  stroke-linecap: round;\n  stroke-dasharray: 69.115;\n  stroke-dashoffset: 0;\n  transition: stroke 0.5s;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill.warn[_ngcontent-%COMP%] {\n  stroke: #f7a44f;\n}\n.countdown-badge[_ngcontent-%COMP%]   .mini-ring-fill.danger[_ngcontent-%COMP%] {\n  stroke: var(--danger, #f75f5f);\n}\n.countdown-badge.warn[_ngcontent-%COMP%] {\n  border-color: rgba(247, 164, 79, 0.4);\n  background: rgba(42, 31, 14, 1);\n  color: #f7a44f;\n}\n.countdown-badge.danger[_ngcontent-%COMP%] {\n  border-color: rgba(247, 95, 95, 0.4);\n  background: rgba(42, 14, 14, 1);\n  color: var(--danger, #f75f5f);\n}\n.countdown-badge[_ngcontent-%COMP%]   .countdown-text[_ngcontent-%COMP%] {\n  font-family: "JetBrains Mono", monospace;\n  font-size: 14px;\n  font-weight: 600;\n}\n.delete-row[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px dashed var(--border-color);\n  border-radius: 12px;\n  padding: 10px 16px;\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  gap: 12px;\n  margin: 16px auto 0;\n  max-width: 500px;\n  transition: border-color 0.2s;\n}\n.delete-row[_ngcontent-%COMP%]:hover {\n  border-color: var(--primary);\n}\n.delete-row-content[_ngcontent-%COMP%] {\n  flex: 1;\n}\n.delete-row-title[_ngcontent-%COMP%] {\n  font-size: 13px;\n  color: var(--text);\n  margin-bottom: 2px;\n}\n.delete-row-sub[_ngcontent-%COMP%] {\n  font-size: 11px;\n  color: var(--text-secondary);\n}\n.btn-delete[_ngcontent-%COMP%] {\n  background: transparent;\n  border: 1px solid #f56565;\n  color: #f56565;\n  font-size: 13px;\n  font-weight: 600;\n  padding: 7px 16px;\n  border-radius: 6px;\n  cursor: pointer;\n  white-space: nowrap;\n  flex-shrink: 0;\n  display: flex;\n  align-items: center;\n  gap: 6px;\n  transition: background 0.2s;\n}\n.btn-delete[_ngcontent-%COMP%]:hover {\n  background: rgba(245, 101, 101, 0.12);\n}\n.delete-row.deleted[_ngcontent-%COMP%] {\n  border-color: #2d3748;\n  opacity: 0.45;\n  pointer-events: none;\n}\n.modal-backdrop[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(0, 0, 0, 0.85);\n  z-index: 99999;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  padding: 20px;\n}\n.modal[_ngcontent-%COMP%] {\n  background: var(--card-bg);\n  border: 1px solid var(--border-color);\n  border-radius: 20px;\n  padding: 36px 32px 28px;\n  max-width: 420px;\n  width: 100%;\n  display: block;\n  position: relative;\n  height: auto;\n}\n.modal-close-x[_ngcontent-%COMP%] {\n  position: absolute;\n  top: 14px;\n  right: 14px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 50%;\n  width: 30px;\n  height: 30px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  cursor: pointer;\n  color: var(--text-secondary);\n}\n.modal-icon-wrap[_ngcontent-%COMP%] {\n  width: 64px;\n  height: 64px;\n  border-radius: 50%;\n  background: rgba(239, 68, 68, 0.12);\n  border: 2px solid rgba(239, 68, 68, 0.3);\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  margin: 0 auto 20px;\n}\n.modal[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  text-align: center;\n  font-size: 20px;\n  font-weight: 700;\n  color: var(--text);\n  margin-bottom: 10px;\n}\n.modal-body[_ngcontent-%COMP%] {\n  text-align: center;\n  color: var(--text-secondary);\n  font-size: 14px;\n  margin-bottom: 8px;\n}\n.modal-url-preview[_ngcontent-%COMP%] {\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  padding: 10px 14px;\n  font-size: 13px;\n  color: var(--primary);\n  font-weight: 500;\n  text-align: center;\n  margin: 16px 0 24px;\n  word-break: break-all;\n}\n.modal-warning[_ngcontent-%COMP%] {\n  display: flex;\n  align-items: center;\n  gap: 8px;\n  background: rgba(239, 68, 68, 0.07);\n  border: 1px solid rgba(239, 68, 68, 0.2);\n  border-radius: 8px;\n  padding: 10px 14px;\n  margin-bottom: 24px;\n  font-size: 12.5px;\n  color: #fca5a5;\n}\n.modal-actions[_ngcontent-%COMP%] {\n  display: flex;\n  gap: 10px;\n}\n.btn-modal-cancel[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background: var(--bg-secondary);\n  border: 1px solid var(--border-color);\n  border-radius: 10px;\n  color: var(--text-secondary);\n  font-size: 14px;\n  font-weight: 600;\n  cursor: pointer;\n}\n.btn-modal-confirm[_ngcontent-%COMP%] {\n  flex: 1;\n  padding: 12px;\n  background:\n    linear-gradient(\n      135deg,\n      #ef4444,\n      #b91c1c);\n  border: none;\n  border-radius: 10px;\n  color: white;\n  font-size: 14px;\n  font-weight: 700;\n  cursor: pointer;\n}\n.pin-input-wrapper[_ngcontent-%COMP%] {\n  margin: 16px 0;\n}\n.pin-input[_ngcontent-%COMP%] {\n  width: 100%;\n  padding: 12px 16px;\n  border: 1px solid var(--border-color);\n  border-radius: 8px;\n  font-size: 18px;\n  text-align: center;\n  letter-spacing: 0.25em;\n  background: var(--bg-secondary);\n  color: var(--text);\n  box-sizing: border-box;\n}\n.pin-input[_ngcontent-%COMP%]:focus {\n  outline: none;\n  border-color: var(--primary);\n}\n.pin-error[_ngcontent-%COMP%] {\n  color: #f56565;\n  font-size: 12px;\n  text-align: center;\n  margin-top: 8px;\n}\n.textarea-flex-wrapper.expired[_ngcontent-%COMP%] {\n  background: transparent;\n  border: 2px dashed var(--border-color);\n}\n.textarea-flex-wrapper.expired[_ngcontent-%COMP%]   textarea[_ngcontent-%COMP%] {\n  opacity: 0.3;\n}\n.expired-overlay[_ngcontent-%COMP%] {\n  position: fixed;\n  inset: 0;\n  background: rgba(10, 11, 18, 0.92);\n  z-index: 99999;\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  justify-content: center;\n  gap: 16px;\n}\n.expired-overlay[_ngcontent-%COMP%]   h2[_ngcontent-%COMP%] {\n  font-size: 22px;\n  font-weight: 700;\n  color: var(--danger, #f75f5f);\n  font-family: "JetBrains Mono", monospace;\n}\n.expired-overlay[_ngcontent-%COMP%]   p[_ngcontent-%COMP%] {\n  color: var(--text-secondary);\n  font-size: 14px;\n  text-align: center;\n  max-width: 320px;\n}\n/*# sourceMappingURL=text-viewer.component.css.map */'] });
 };
 (() => {
-  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextViewerComponent, { className: "ZipTextViewerComponent", filePath: "src/app/zip-text/text-viewer/text-viewer.component.ts", lineNumber: 25 });
+  (typeof ngDevMode === "undefined" || ngDevMode) && \u0275setClassDebugInfo(ZipTextViewerComponent, { className: "ZipTextViewerComponent", filePath: "src/app/zip-text/text-viewer/text-viewer.component.ts", lineNumber: 27 });
 })();
 
 // src/app/zip-url/zip-url.component.ts
@@ -89066,14 +89390,24 @@ var AppComponent = class _AppComponent {
         const result2 = response.data?.getZipText;
         let text = "";
         let isOneTimeView = false;
+        let hasPin = false;
+        let isIpRestricted = false;
+        let expiryTime = null;
         if (typeof result2 === "string") {
           text = result2;
         } else if (result2 && result2.text !== void 0) {
           text = result2.text;
           isOneTimeView = result2.isOneTimeView || false;
+          hasPin = result2.hasPin || false;
+          isIpRestricted = result2.isIpRestricted || false;
+          expiryTime = result2.expiryTime || null;
         }
         this.commonService.setTempText(text);
         this.commonService.setTempIsOneTimeView(isOneTimeView);
+        this.commonService.setTempHasPin(hasPin);
+        this.commonService.setTempIsIpRestricted(isIpRestricted);
+        this.commonService.setTempExpiryInMinutes(null);
+        this.commonService.setTempExpiryTime(expiryTime);
         this.commonService.setIsFromBackend(true);
         setTimeout(() => this.changeScreenToShowApp(), 500);
         this.router.navigate(["/t", id]);
